@@ -19,7 +19,6 @@ add_subdirectory(${GLAD_DIR})
 add_subdirectory(${RENDERER_DIR})
 
 list(APPEND SOURCES
-    ${SRC_DIR}/render_frame_buffer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
