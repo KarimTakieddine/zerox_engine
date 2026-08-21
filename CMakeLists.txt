@@ -19,6 +19,7 @@ add_subdirectory(${GLAD_DIR})
 add_subdirectory(${RENDERER_DIR})
 
 list(APPEND SOURCES
+    ${SRC_DIR}/render_frame_buffer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -45,5 +46,5 @@ add_dependencies(${PROJECT_NAME} zerox_engine_platform zerox_engine_glad zerox_e
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${SHADERS_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/${SHADERS_DIR}"
-    # COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/"
     VERBATIM)
