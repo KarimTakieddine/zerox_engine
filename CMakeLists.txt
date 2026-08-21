@@ -1,0 +1,51 @@
+cmake_minimum_required(VERSION 4.3.3 FATAL_ERROR)
+
+set(CMAKE_CXX_STANDARD 20 REQUIRED)
+
+set(PROJECT_NAME zerox_engine)
+set(INCLUDE_DIR include)
+set(SRC_DIR src)
+set(SHADERS_DIR shaders)
+set(PLATFORM_DIR zerox_engine_platform)
+set(GLAD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_glad")
+set(RENDERER_DIR zerox_engine_renderer)
+set(MEMORY_READER_DIR memory_reader)
+
+Project(${PROJECT_NAME})
+
+add_subdirectory(${PLATFORM_DIR})
+add_subdirectory(${GLAD_DIR})
+add_subdirectory(${RENDERER_DIR})
+
+list(APPEND SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
+
+add_executable(${PROJECT_NAME} ${SOURCES})
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    PLATFORM_DLL_FILE="$<TARGET_FILE:zerox_engine_platform>")
+
+add_custom_target(Assets ALL)
+
+find_package(glfw3 3.4 REQUIRED)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${INCLUDE_DIR}
+    ${PLATFORM_DIR}/include
+    ${RENDERER_DIR}/include
+    ${GLAD_DIR}/include
+    ${MEMORY_READER_DIR}/include)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE uring zerox_engine_platform GL zerox_engine_glad zerox_engine_renderer glfw)
+
+add_custom_command(TARGET Assets POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${SHADERS_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${SHADERS_DIR}
+    VERBATIM)
+
+add_dependencies(${PROJECT_NAME} zerox_engine_platform zerox_engine_glad zerox_engine_renderer Assets)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    # COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${SHADERS_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/${SHADERS_DIR}"
+    # COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/"
+    VERBATIM)
