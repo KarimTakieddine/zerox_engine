@@ -22,9 +22,6 @@ list(APPEND SOURCES
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-    PLATFORM_DLL_FILE="$<TARGET_FILE:zerox_engine_platform>")
-
 add_custom_target(Assets ALL)
 
 find_package(glfw3 3.4 REQUIRED)
