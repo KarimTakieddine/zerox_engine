@@ -1,8 +1,54 @@
 #include <filesystem>
 
+#include "game_library.h"
 #include "zerox_engine_runtime.h"
 
 #include <iostream>
+
+namespace
+{
+    bool copyGameLibrary(const std::filesystem::path gameDirectoryPath, const std::filesystem::path& gameLibraryPath, std::filesystem::path& destinationPath, uint64_t suffix)
+    {
+        const auto filenamePath = gameLibraryPath.filename();
+
+        std::string filename        = filenamePath.string();
+        const std::string extension = filenamePath.extension().string();
+
+        const auto pos = filename.find(extension);
+        if (pos == std::string::npos)
+        {
+            std::cout << "Failed to find extension in game library file" << std::endl;
+        }
+
+        filename.insert(pos, "_" + std::to_string(suffix));
+
+        destinationPath = gameDirectoryPath / filename;
+
+        return platform::copyFile(gameLibraryPath.c_str(), destinationPath.c_str());
+    }
+
+    bool reloadGameLibrary(const std::filesystem::path gameDirectoryPath, const std::filesystem::path& gameLibraryPath, std::atomic<std::shared_ptr<ZeroX::GameLibrary>>& gameLibrary, uint64_t suffix)
+    {
+        if (platform::getFileSize(gameLibraryPath.c_str()) == 0)
+        {
+            return false;
+        }
+
+        std::filesystem::path destinationPath;
+        if (!::copyGameLibrary(gameDirectoryPath, gameLibraryPath, destinationPath, suffix))
+        {
+            std::cout << "Failed to copy file from: " << gameLibraryPath.c_str() << " to " << destinationPath.c_str() << std::endl;
+            return false;
+        }
+
+        if (!gameLibrary.load(std::memory_order_acquire)->load(destinationPath.c_str()))
+        {
+            return false;
+        }
+
+        return true;
+    }
+}
 
 namespace ZeroX
 {
@@ -39,42 +85,27 @@ namespace ZeroX
             return;
         }
 
+        std::atomic<std::shared_ptr<GameLibrary>> sharedGameLibrary = std::make_shared<GameLibrary>();
+
         while (m_runGame.load(std::memory_order_acquire))
         {
             const uint64_t watchCounter = gameLibraryWatcher.getChangeCounter();
 
             if (fileChangeCounter != watchCounter)
             {
-                std::cout << "File has changed" << std::endl;
-
-                const auto filenamePath = gameLibraryPath.filename();
-
-                std::string filename        = filenamePath.string();
-                const std::string extension = filenamePath.extension().string();
-
-                const auto pos = filename.find(extension);
-                if (pos == std::string::npos)
+                if (!::reloadGameLibrary(gameDirectoryPath, gameLibraryPath, sharedGameLibrary, watchCounter))
                 {
-                    std::cout << "Failed to find extension in game library file" << std::endl;
+                    std::cout << "Failed to load game library" << std::endl;
+                }
+                else
+                {
+                    std::cout << "Loaded game library" << std::endl;
                 }
 
-                filename.insert(pos, "_" + std::to_string(watchCounter));
-
-                const auto destinationPath = gameDirectoryPath / filename;
-
-                if (!platform::copyFile(gameLibraryPath.c_str(), destinationPath.c_str()))
-                {
-                    std::cout << "Failed to copy game library file from: " << gameLibraryPath.string() << " to " << destinationPath.string() << std::endl;
-
-                    continue;
-                }
-                
-                std::cout << "Copy created: " << destinationPath.string() << std::endl;
-
-                
-
-                fileChangeCounter = watchCounter;
+                fileChangeCounter = gameLibraryWatcher.getChangeCounter();
             }
+
+            // Do game stuff...
         }
 
         gameLibraryWatcher.stopWatching();
