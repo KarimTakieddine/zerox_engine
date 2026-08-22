@@ -11,7 +11,7 @@ namespace ZeroX
     public:
         ~GameLibraryWatcher();
 
-        bool startWatching(const char* path);
+        bool startWatching(const char* parentDirectory, const char* filename);
         void stopWatching();
         uint64_t getChangeCounter() const;
 

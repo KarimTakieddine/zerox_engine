@@ -10,9 +10,9 @@ namespace ZeroX
         }
     }
 
-    bool GameLibraryWatcher::startWatching(const char* path)
+    bool GameLibraryWatcher::startWatching(const char* parentDirectory, const char* filename)
     {
-        if (!platform::initFileWriteEvent(path, &m_fileWriteEvent))
+        if (!platform::initFileWriteEvent(parentDirectory, filename, &m_fileWriteEvent))
         {
             return false;
         }

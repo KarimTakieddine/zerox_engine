@@ -18,7 +18,7 @@ void monitor_file_changes()
 
     uint64_t fileChangeCounter = 0;
 
-    if (!gameLibraryWatcher.startWatching("/home/mouns/Repositories/test_file.txt"))
+    if (!gameLibraryWatcher.startWatching("/home/mouns/Repositories/zerox_game/build", "libzerox_game.so"))
     {
         return;
     }
