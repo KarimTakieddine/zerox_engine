@@ -10,3 +10,6 @@
 [submodule "memory_reader"]
 	path = memory_reader
 	url = https://github.com/KarimTakieddine/memory_reader.git
+[submodule "zerox_game"]
+	path = zerox_game
+	url = https://github.com/KarimTakieddine/zerox_game.git

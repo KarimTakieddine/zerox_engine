@@ -1,9 +1,10 @@
 #include <filesystem>
+#include <iostream>
+
+#include <zerox_game_memory.hpp>
 
 #include "game_library.h"
 #include "zerox_engine_runtime.h"
-
-#include <iostream>
 
 namespace
 {
@@ -52,9 +53,9 @@ namespace
 
 namespace ZeroX
 {
-    void EngineRuntime::startGameThread(const char* gameLibraryDir, const char* gameLibraryName)
+    void EngineRuntime::startGameThread(const char* gameLibraryDir, const char* gameLibraryName, renderer::FrameBuffer* frameBuffer)
     {
-        m_gameThread = std::thread(&EngineRuntime::executeGameLoop, this, gameLibraryDir, gameLibraryName);
+        m_gameThread = std::thread(&EngineRuntime::executeGameLoop, this, gameLibraryDir, gameLibraryName, frameBuffer);
     }
 
     void EngineRuntime::startRenderThread()
@@ -62,7 +63,7 @@ namespace ZeroX
 
     }
 
-    void EngineRuntime::executeGameLoop(const char* gameLibraryDir, const char* gameLibraryName)
+    void EngineRuntime::executeGameLoop(const char* gameLibraryDir, const char* gameLibraryName, renderer::FrameBuffer* frameBuffer)
     {
         ZeroX::GameLibraryWatcher gameLibraryWatcher;
 
@@ -118,9 +119,37 @@ namespace ZeroX
             }
 
             auto sharedLibrary = sharedGameLibrary.load(std::memory_order_acquire);
-            if (sharedLibrary && sharedLibrary->isLoaded() && sharedLibrary->isValid())
+            if (!sharedLibrary || !sharedLibrary->isLoaded() && !sharedLibrary->isValid())
             {
-                sharedLibrary->getFunctions().updateGame(&gameAllocator);
+                std::cout << "No shared game library found or successfully loaded" << std::endl;
+            }
+
+            sharedLibrary->getFunctions().updateGame(&gameAllocator);
+
+            ZeroXGame::GameMemory gameMemory = ZeroXGame::readGameMemory(&gameAllocator);
+
+            const auto players = gameMemory.players;
+            for (size_t i = 0; i < players.size(); ++i)
+            {
+                ZeroXGame::GameEntity* playerEntity = players.data() + i;
+
+                renderer::Command updateTransformCommand{ .type = renderer::CommandType::UPDATE_ENTITY_TRANSFORM };
+
+                size_t batchIndex   = 0;
+                size_t entityIndex  = i;
+
+                const float speed = i * 0.25f;
+
+                playerEntity->transform.localToWorld[3].x += 0.016f * speed;
+
+                std::memcpy(updateTransformCommand.data, &batchIndex, sizeof(size_t));
+                std::memcpy(updateTransformCommand.data + sizeof(size_t), &entityIndex, sizeof(size_t));
+                std::memcpy(updateTransformCommand.data + 2 * sizeof(size_t), &(playerEntity->transform), sizeof(ZeroXGame::Transform));
+
+                while(!frameBuffer->push({ { updateTransformCommand } }))
+                {
+
+                }
             }
         }
 

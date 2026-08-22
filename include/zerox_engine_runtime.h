@@ -1,5 +1,7 @@
 #pragma once
 
+#include <render_frame_buffer.h>
+
 #include "game_library_watcher.h"
 
 namespace ZeroX
@@ -7,13 +9,13 @@ namespace ZeroX
     class EngineRuntime
     {
     public:
-        void startGameThread(const char* gameLibraryDir, const char* gameLibraryName);
+        void startGameThread(const char* gameLibraryDir, const char* gameLibraryName, renderer::FrameBuffer* frameBuffer);
         void startRenderThread();
 
         void stopGameThread();
 
     private:
-        void executeGameLoop(const char* gameLibraryDir, const char* gameLibraryName);
+        void executeGameLoop(const char* gameLibraryDir, const char* gameLibraryName, renderer::FrameBuffer* frameBuffer);
         void executeRenderLoop();
 
         std::thread m_gameThread;

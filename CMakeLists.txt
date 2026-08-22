@@ -11,6 +11,7 @@ set(PLATFORM_DIR zerox_engine_platform)
 set(GLAD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_glad")
 set(RENDERER_DIR zerox_engine_renderer)
 set(MEMORY_READER_DIR memory_reader)
+set(GAME_DIR zerox_game)
 
 Project(${PROJECT_NAME})
 
@@ -32,6 +33,7 @@ find_package(glfw3 3.4 REQUIRED)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${INCLUDE_DIR}
+    ${GAME_DIR}/include
     ${PLATFORM_DIR}/include
     ${RENDERER_DIR}/include
     ${GLAD_DIR}/include

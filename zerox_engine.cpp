@@ -12,10 +12,11 @@
 int main(int argc, char** argv)
 {
     ZeroX::EngineRuntime engineRuntime;
-    engineRuntime.startGameThread("/home/mouns/Repositories/zerox_game/build", "libzerox_game.so");
 
     renderer::FrameBuffer renderFrameBuffer;
     renderFrameBuffer.allocate(64);
+
+    engineRuntime.startGameThread("/home/mouns/Repositories/zerox_game/build", "libzerox_game.so", &renderFrameBuffer);
 
     renderer::PlatformFunctions platformFunctions {
         .getFileSize = &platform::getFileSize,
@@ -131,20 +132,6 @@ int main(int argc, char** argv)
 
         return 4;
     }
-
-    renderer::Transform transform;
-    transform.localToWorld[3].x = 2.5f;
-
-    renderer::Command updateTransformCommand{ .type = renderer::CommandType::UPDATE_ENTITY_TRANSFORM };
-
-    size_t batchIndex   = 0;
-    size_t entityIndex  = 0;
-
-    std::memcpy(updateTransformCommand.data, &batchIndex, sizeof(size_t));
-    std::memcpy(updateTransformCommand.data + sizeof(size_t), &entityIndex, sizeof(size_t));
-    std::memcpy(updateTransformCommand.data + 2 * sizeof(size_t), &transform, sizeof(renderer::Transform));
-
-    renderFrameBuffer.push({ { updateTransformCommand } });
 
     renderer::Allocator renderAllocator;
     renderer::allocateGraphicsResources(&renderAllocator, &graphicsConfig);
