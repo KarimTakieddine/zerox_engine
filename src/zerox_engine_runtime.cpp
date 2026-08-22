@@ -2,7 +2,13 @@
 #include <iostream>
 
 #include <glad/glad.h>
+#include <GL/glx.h>
+#include <GL/glext.h>
+
+#define GLFW_EXPOSE_NATIVE_X11
+#define GLFW_EXPOSE_NATIVE_GLX
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
 
 #include <renderer.hpp>
 #include <shader.h>
@@ -53,6 +59,15 @@ namespace
         }
 
         return true;
+    }
+
+    void onWindowResize(GLFWwindow* window, int width, int height)
+    {
+        renderer::MutableGraphicsMemory* mutableGraphicsMemory = reinterpret_cast<renderer::MutableGraphicsMemory*>(glfwGetWindowUserPointer(window));
+
+        renderer::setCameraAspectRatio(*mutableGraphicsMemory, width, height);
+
+        glViewport(0, 0, width, height);
     }
 }
 
@@ -129,6 +144,22 @@ namespace ZeroX
             if (!sharedLibrary || !sharedLibrary->isLoaded() && !sharedLibrary->isValid())
             {
                 std::cout << "No shared game library found or successfully loaded" << std::endl;
+                continue;
+            }
+
+            // Wait for frame N - maxQueuedFrames
+
+            if (m_gameFrameIndex.load(std::memory_order_relaxed) >= 4)
+            {
+                const uint64_t renderFrameIndex = m_renderFrameIndex.load(std::memory_order_acquire);
+                const uint64_t gameFrameIndex   = m_gameFrameIndex.load(std::memory_order_relaxed);
+
+                uint64_t difference = gameFrameIndex - renderFrameIndex;
+
+                if (difference >= 4)
+                {
+                    m_renderFrameIndex.wait(renderFrameIndex);
+                }
             }
 
             sharedLibrary->getFunctions().updateGame(&gameAllocator);
@@ -149,7 +180,7 @@ namespace ZeroX
 
                 const float speed = i * 0.25f;
 
-                playerEntity->transform.localToWorld[3].x += 0.016f * speed;
+                playerEntity->transform.localToWorld[3].x += m_frameDeltaTime.load(std::memory_order_acquire) * speed;
 
                 std::memcpy(updateTransformCommand.data, &batchIndex, sizeof(size_t));
                 std::memcpy(updateTransformCommand.data + sizeof(size_t), &entityIndex, sizeof(size_t));
@@ -172,6 +203,9 @@ namespace ZeroX
     void EngineRuntime::stopGameThread()
     {
         m_runGame.store(false, std::memory_order_release);
+
+        m_renderFrameIndex.store(0, std::memory_order_release);
+        m_renderFrameIndex.notify_one();
 
         if (m_gameThread.joinable())
         {
@@ -310,6 +344,19 @@ namespace ZeroX
         renderer::initializeGraphicsResources(mutableGraphicsMemory, &graphicsConfig, &platformFunctions);
         renderer::initializeGraphicsState();
 
+        glfwSetWindowUserPointer(window, &mutableGraphicsMemory);
+
+        int windowWidth{ 0 };
+        int windowHeight{ 0 };
+        glfwGetWindowSize(window, &windowWidth, &windowHeight);
+        ::onWindowResize(window, windowWidth, windowHeight);
+        glfwSetWindowSizeCallback(window, ::onWindowResize);
+        glfwShowWindow(window);
+
+        uint64_t renderFrameIndex       = 0;
+        int64_t lastPresentationTime    = 0;
+        auto startTimePoint             = std::chrono::high_resolution_clock::now();
+
         while (!glfwWindowShouldClose(window))
         {
             if (!m_runRenderer.load(std::memory_order_acquire))
@@ -330,6 +377,33 @@ namespace ZeroX
             renderer::render(renderer::freezeGraphicsMemory(mutableGraphicsMemory));
 
             glfwSwapBuffers(window);
+
+            PFNGLXGETSYNCVALUESOMLPROC glXGetSyncValuesOML =
+                (PFNGLXGETSYNCVALUESOMLPROC)glXGetProcAddressARB((const GLubyte *)"glXGetSyncValuesOML");
+
+            int64_t systemTime          { 0 };
+            int64_t streamCounter       { 0 };
+            int64_t swapBufferCounter   { 0 };
+
+            if (glXGetSyncValuesOML != nullptr && glXGetSyncValuesOML(nullptr, glfwGetGLXWindow(window), &systemTime, &streamCounter, &swapBufferCounter))
+            {
+                
+            }
+            else
+            {
+                auto timePoint = std::chrono::high_resolution_clock::now();
+
+                systemTime = std::chrono::duration_cast<std::chrono::microseconds>(timePoint - startTimePoint).count();
+            }
+
+            m_frameDeltaTime.store(static_cast<double>(systemTime - lastPresentationTime) * 0.000001);
+
+            m_renderFrameIndex.store(renderFrameIndex, std::memory_order_release);
+            m_renderFrameIndex.notify_one();
+
+            lastPresentationTime = systemTime;
+
+            ++renderFrameIndex;
         }
 
         renderer::freeGraphicsResources(mutableGraphicsMemory);

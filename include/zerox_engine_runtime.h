@@ -23,6 +23,7 @@ namespace ZeroX
         std::thread m_rendererThread;
         std::atomic<uint64_t> m_gameFrameIndex{ 0 };
         std::atomic<uint64_t> m_renderFrameIndex{ 0 };
+        std::atomic<double> m_frameDeltaTime{ 0.0 };
         std::atomic<bool> m_runGame{ true };
         std::atomic<bool> m_runRenderer{ true };
     };
