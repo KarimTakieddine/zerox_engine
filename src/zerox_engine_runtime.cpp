@@ -1,6 +1,11 @@
 #include <filesystem>
 #include <iostream>
 
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
+#include <renderer.hpp>
+#include <shader.h>
 #include <zerox_game_memory.hpp>
 
 #include "game_library.h"
@@ -58,9 +63,9 @@ namespace ZeroX
         m_gameThread = std::thread(&EngineRuntime::executeGameLoop, this, gameLibraryDir, gameLibraryName, frameBuffer);
     }
 
-    void EngineRuntime::startRenderThread()
+    void EngineRuntime::startRenderThread(renderer::FrameBuffer* frameBuffer)
     {
-
+        m_rendererThread = std::thread(&EngineRuntime::executeRenderLoop, this, frameBuffer);
     }
 
     void EngineRuntime::executeGameLoop(const char* gameLibraryDir, const char* gameLibraryName, renderer::FrameBuffer* frameBuffer)
@@ -99,6 +104,8 @@ namespace ZeroX
         gameLibrary->getFunctions().initGame(&gameAllocator);
 
         std::atomic<std::shared_ptr<GameLibrary>> sharedGameLibrary(gameLibrary);
+
+        m_gameFrameIndex.store(0, std::memory_order_relaxed);
 
         while (m_runGame.load(std::memory_order_acquire))
         {
@@ -155,6 +162,8 @@ namespace ZeroX
             {
                 
             }
+
+            m_gameFrameIndex.fetch_add(1, std::memory_order_relaxed);
         }
 
         gameLibraryWatcher.stopWatching();
@@ -162,7 +171,7 @@ namespace ZeroX
 
     void EngineRuntime::stopGameThread()
     {
-        m_runGame.store(false);
+        m_runGame.store(false, std::memory_order_release);
 
         if (m_gameThread.joinable())
         {
@@ -170,8 +179,162 @@ namespace ZeroX
         }
     }
 
-    void EngineRuntime::executeRenderLoop()
+    void EngineRuntime::waitForWindowClose()
     {
+        if (m_rendererThread.joinable())
+        {
+            m_rendererThread.join();
+        }
+    }
 
+    void EngineRuntime::executeRenderLoop(renderer::FrameBuffer* frameBuffer)
+    {
+        renderer::PlatformFunctions platformFunctions {
+            .getFileSize = &platform::getFileSize,
+            .readFile = &platform::readFile };
+
+        renderer::Vertex quadVertices[4] = {
+            { { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
+            { { -0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
+            { { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } },
+            { { 0.5f, -0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
+        };
+
+        unsigned int quadTriangles[6] = { 0, 2, 1, 0, 3, 2 };
+
+        renderer::Mesh meshes[1] = { { quadVertices, quadTriangles, 4, 6 } };
+
+        renderer::Shader shaderList[2] = {
+            { "./shaders/3d_transform_vertex.slh", renderer::Shader::Type::VERTEX },
+            { "./shaders/3d_transform_fragment.slh", renderer::Shader::Type::FRAGMENT },
+        };
+
+        renderer::Eye cameraEye = {
+            .position   = glm::vec3{ 0.0f, 0.0f, 10.0f },
+            .target	    = glm::vec3{ 0.0f, 0.0f, 0.0f },
+            .up		    = glm::vec3{ 0.0f, 1.0f, 0.0f }
+        };
+
+        renderer::Frustum cameraFrustum = {
+            .fov    = 45.0f,
+            .aspect = 1920.0f / 1080.0f,
+            .near   = 1.0f,
+            .far    = 100.0f
+        };
+
+        const char* cameraUniformNames[4] = {
+            "cameraProjection",
+            "cameraLocalToWorld",
+            "cameraLocalRotation",
+            "cameraView"
+        };
+
+        const size_t entityCount = 4;
+
+        size_t shaderIndices[2] = { 0, 1 };
+
+        renderer::ShaderCompileStep shaderCompileSteps[1] = {
+            { .shaderIndices = shaderIndices, .shaderCount = 2, .programIndex = 0 }
+        };
+
+        renderer::ShaderLocationsLink shaderLocationsLinks[1] = {
+            { .locationsIndex = 0, .shaderProgramIndex = 0 }
+        };
+
+        renderer::RenderBatchConfig renderBatchConfigs[1] = {
+            {
+                .batchIndex = 0,
+                .shaderProgramIndex = 0,
+                .vertexArrayIndex = 0,
+                .shaderLocationsIndex = 0,
+                .meshIndex = 0
+            }
+        };
+
+        renderer::GraphicsConfig graphicsConfig = {
+            .meshes = meshes,
+            .textures = nullptr,
+            .renderEntityCounts = &entityCount,
+            .shaders = shaderList,
+            .cameraEye = &cameraEye,
+            .cameraFrustum = &cameraFrustum,
+            .cameraUniformBuffer = "CameraMatrices",
+            .cameraUniformNames = cameraUniformNames,
+            .shaderCompileSteps = shaderCompileSteps,
+            .shaderLocationsLinks = shaderLocationsLinks,
+            .renderBatchConfigs = renderBatchConfigs,
+            .meshCount = 1,
+            .bufferCount = 3,
+            .vertexArrayCount = 1,
+            .textureCount = 0,
+            .shaderCount = 2,
+            .shaderProgramCount = 1,
+            .locationsDescriptorCount = 1,
+            .renderBatchCount = 1,
+            .compileStepCount = 1,
+            .locationsLinkCount = 1,
+            .batchConfigCount = 1
+        };
+
+        if (glfwInit() != GLFW_TRUE)
+        {
+            return;
+        }
+
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
+
+        GLFWwindow* window = glfwCreateWindow(1920, 1080, "Minimal Renderer", nullptr, nullptr);
+        if (!window)
+        {
+            glfwTerminate();
+
+            return;
+        }
+
+        glfwMakeContextCurrent(window);
+
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+        {
+            glfwDestroyWindow(window);
+            glfwTerminate();
+
+            return;
+        }
+
+        renderer::Allocator renderAllocator;
+        renderer::allocateGraphicsResources(&renderAllocator, &graphicsConfig);
+        renderer::MutableGraphicsMemory mutableGraphicsMemory = renderer::readGraphicsMemory(&renderAllocator);
+        renderer::initializeGraphicsResources(mutableGraphicsMemory, &graphicsConfig, &platformFunctions);
+        renderer::initializeGraphicsState();
+
+        while (!glfwWindowShouldClose(window))
+        {
+            if (!m_runRenderer.load(std::memory_order_acquire))
+            {
+                glfwSetWindowShouldClose(window, GLFW_TRUE);
+                continue;
+            }
+
+            glfwPollEvents();
+
+            renderer::Frame renderFrame;
+            if (frameBuffer->pop(renderFrame))
+            {
+                renderer::processFrame(mutableGraphicsMemory, &renderFrame);
+            }
+
+            renderer::clearFrameBuffer();
+            renderer::render(renderer::freezeGraphicsMemory(mutableGraphicsMemory));
+
+            glfwSwapBuffers(window);
+        }
+
+        renderer::freeGraphicsResources(mutableGraphicsMemory);
+        
+        glfwDestroyWindow(window);
+        glfwTerminate();
     }
 }
