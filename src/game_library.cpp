@@ -14,8 +14,21 @@ namespace ZeroX
         m_functions.initGame    = (GameLibraryFunctions::GameInitFunc)platform::loadLibraryFunction(m_libraryHandle.get(), "initializeGame");
         m_functions.updateGame  = (GameLibraryFunctions::GameUpdateFunc)platform::loadLibraryFunction(m_libraryHandle.get(), "updateGame");
 
-        m_functions.initGame();
-
         return true;
+    }
+
+    bool GameLibrary::isLoaded() const
+    {
+        return m_libraryHandle && m_libraryHandle->getHandle();
+    }
+
+    bool GameLibrary::isValid() const
+    {
+        return m_functions.initGame && m_functions.updateGame;
+    }
+
+    const GameLibraryFunctions& GameLibrary::getFunctions() const
+    {
+        return m_functions;
     }
 }

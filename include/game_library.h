@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <bump_allocator.hpp>
 #include <platform.h>
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -12,11 +13,15 @@
 
 namespace ZeroX
 {
+    constexpr size_t GAME_MEMORY_ALIGNMENT = 16;
+
+    using GameAllocator = BumpAllocator<GAME_MEMORY_ALIGNMENT>;
+
     struct GameLibraryFunctions
     {
     public:
-        typedef size_t(CDECL* GameInitFunc)();
-        typedef bool(CDECL* GameUpdateFunc)();
+        typedef size_t(CDECL* GameInitFunc)(GameAllocator*);
+        typedef bool(CDECL* GameUpdateFunc)(GameAllocator*);
 
         GameInitFunc initGame       { nullptr };
         GameUpdateFunc updateGame   { nullptr };
@@ -26,6 +31,11 @@ namespace ZeroX
     {
     public:
         bool load(const char* path);
+
+        bool isLoaded() const;
+        bool isValid() const;
+
+        const GameLibraryFunctions& getFunctions() const;
 
     private:
         GameLibraryFunctions m_functions;

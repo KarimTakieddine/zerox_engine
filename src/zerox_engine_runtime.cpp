@@ -85,7 +85,19 @@ namespace ZeroX
             return;
         }
 
-        std::atomic<std::shared_ptr<GameLibrary>> sharedGameLibrary = std::make_shared<GameLibrary>();
+        BumpAllocator<16> gameAllocator;
+        gameAllocator.allocate(4096);
+
+        auto gameLibrary = std::make_shared<GameLibrary>();
+        if (!gameLibrary->load(gameLibraryPath.c_str()))
+        {
+            std::cout << "Failed to load game library" << std::endl;
+            return;
+        }
+
+        gameLibrary->getFunctions().initGame(&gameAllocator);
+
+        std::atomic<std::shared_ptr<GameLibrary>> sharedGameLibrary(gameLibrary);
 
         while (m_runGame.load(std::memory_order_acquire))
         {
@@ -99,13 +111,17 @@ namespace ZeroX
                 }
                 else
                 {
-                    std::cout << "Loaded game library" << std::endl;
+                    std::cout << "Re-loaded game library" << std::endl;
                 }
 
                 fileChangeCounter = gameLibraryWatcher.getChangeCounter();
             }
 
-            // Do game stuff...
+            auto sharedLibrary = sharedGameLibrary.load(std::memory_order_acquire);
+            if (sharedLibrary && sharedLibrary->isLoaded() && sharedLibrary->isValid())
+            {
+                sharedLibrary->getFunctions().updateGame(&gameAllocator);
+            }
         }
 
         gameLibraryWatcher.stopWatching();
