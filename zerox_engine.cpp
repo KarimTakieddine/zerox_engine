@@ -1,14 +1,47 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-#include "platform.h"
-#include "renderer.hpp"
-#include "render_frame_buffer.h"
-#include "mesh.hpp"
-#include "shader.h"
+#include <renderer.hpp>
+#include <render_frame_buffer.h>
+#include <mesh.hpp>
+#include <shader.h>
+
+#include "game_library_watcher.h"
+
+#include <iostream>
+
+std::atomic<bool> shouldRun{true};
+
+void monitor_file_changes()
+{
+    ZeroX::GameLibraryWatcher gameLibraryWatcher;
+
+    uint64_t fileChangeCounter = 0;
+
+    if (!gameLibraryWatcher.startWatching("/home/mouns/Repositories/test_file.txt"))
+    {
+        return;
+    }
+
+    while (shouldRun.load(std::memory_order_acquire))
+    {
+        const uint64_t watchCounter = gameLibraryWatcher.getChangeCounter();
+
+        if (fileChangeCounter != watchCounter)
+        {
+            std::cout << "File has changed" << std::endl;
+
+            fileChangeCounter = watchCounter;
+        }
+    }
+
+    gameLibraryWatcher.stopWatching();
+}
 
 int main(int argc, char** argv)
 {
+    std::thread gameThread(monitor_file_changes);
+
     renderer::FrameBuffer renderFrameBuffer;
     renderFrameBuffer.allocate(64);
 
@@ -167,6 +200,13 @@ int main(int argc, char** argv)
     
     glfwDestroyWindow(window);
     glfwTerminate();
+
+    shouldRun.store(false, std::memory_order_release);
+
+    if (gameThread.joinable())
+    {
+        gameThread.join();
+    }
 
     return 0;
 }
