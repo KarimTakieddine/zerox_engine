@@ -7,40 +7,12 @@
 #include <shader.h>
 
 #include "game_library_watcher.h"
-
-#include <iostream>
-
-std::atomic<bool> shouldRun{true};
-
-void monitor_file_changes()
-{
-    ZeroX::GameLibraryWatcher gameLibraryWatcher;
-
-    uint64_t fileChangeCounter = 0;
-
-    if (!gameLibraryWatcher.startWatching("/home/mouns/Repositories/zerox_game/build", "libzerox_game.so"))
-    {
-        return;
-    }
-
-    while (shouldRun.load(std::memory_order_acquire))
-    {
-        const uint64_t watchCounter = gameLibraryWatcher.getChangeCounter();
-
-        if (fileChangeCounter != watchCounter)
-        {
-            std::cout << "File has changed" << std::endl;
-
-            fileChangeCounter = watchCounter;
-        }
-    }
-
-    gameLibraryWatcher.stopWatching();
-}
+#include "zerox_engine_runtime.h"
 
 int main(int argc, char** argv)
 {
-    std::thread gameThread(monitor_file_changes);
+    ZeroX::EngineRuntime engineRuntime;
+    engineRuntime.startGameThread("/home/mouns/Repositories/zerox_game/build", "libzerox_game.so");
 
     renderer::FrameBuffer renderFrameBuffer;
     renderFrameBuffer.allocate(64);
@@ -201,12 +173,7 @@ int main(int argc, char** argv)
     glfwDestroyWindow(window);
     glfwTerminate();
 
-    shouldRun.store(false, std::memory_order_release);
-
-    if (gameThread.joinable())
-    {
-        gameThread.join();
-    }
+    engineRuntime.stopGameThread();
 
     return 0;
 }

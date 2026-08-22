@@ -20,6 +20,7 @@ add_subdirectory(${RENDERER_DIR})
 
 list(APPEND SOURCES
     ${SRC_DIR}/game_library_watcher.cpp
+    ${SRC_DIR}/zerox_engine_runtime.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
