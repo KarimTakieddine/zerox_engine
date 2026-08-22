@@ -128,6 +128,8 @@ namespace ZeroX
 
             ZeroXGame::GameMemory gameMemory = ZeroXGame::readGameMemory(&gameAllocator);
 
+            renderer::Frame frame;
+
             const auto players = gameMemory.players;
             for (size_t i = 0; i < players.size(); ++i)
             {
@@ -146,10 +148,12 @@ namespace ZeroX
                 std::memcpy(updateTransformCommand.data + sizeof(size_t), &entityIndex, sizeof(size_t));
                 std::memcpy(updateTransformCommand.data + 2 * sizeof(size_t), &(playerEntity->transform), sizeof(ZeroXGame::Transform));
 
-                while(!frameBuffer->push({ { updateTransformCommand } }))
-                {
+                frame.renderCommands.push_back({ updateTransformCommand });
+            }
 
-                }
+            while(m_runGame.load(std::memory_order_acquire) && !frameBuffer->push(frame))
+            {
+                
             }
         }
 
