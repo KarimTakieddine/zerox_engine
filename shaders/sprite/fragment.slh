@@ -11,6 +11,5 @@ uniform sampler2D textureSampler;
 out vec4 oColor;
 
 void main() {
-    oColor      = texture(textureSampler, vertexUV + textureOffset) * vec4(vertexColor, 1.0) * materialColor;
-    oColor.rgb *= oColor.a;
+    oColor = texture(textureSampler, vertexUV + textureOffset) * materialColor;
 }

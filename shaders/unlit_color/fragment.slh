@@ -8,6 +8,5 @@ uniform vec4 materialColor;
 out vec4 oColor;
 
 void main() {
-    oColor      = vec4(vertexColor, 1.0) * materialColor;
-    oColor.rgb *= oColor.a;
+    oColor = vec4(vertexColor, 1.0) * materialColor;
 }

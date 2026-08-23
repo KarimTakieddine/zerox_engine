@@ -226,9 +226,9 @@ namespace ZeroX
     {
         renderer::Vertex quadVertices[4] = {
             { { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
-            { { -0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
-            { { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 0.0f, 0.0f } },
-            { { 0.5f, -0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 0.0f, 0.0f } },
+            { { -0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 1.0f } },
+            { { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 1.0f } },
+            { { 0.5f, -0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 0.0f } },
         };
 
         unsigned int quadTriangles[6] = { 0, 2, 1, 0, 3, 2 };
@@ -280,9 +280,9 @@ namespace ZeroX
         renderer::RenderBatchConfig renderBatchConfigs[1] = {
             {
                 .batchIndex = 0,
-                .shaderProgramIndex = 0,
+                .shaderProgramIndex = 1,
                 .vertexArrayIndex = 0,
-                .shaderLocationsIndex = 0,
+                .shaderLocationsIndex = 1,
                 .meshIndex = 0
             }
         };
