@@ -170,6 +170,9 @@ namespace ZeroX
             renderer::Frame frame;
 
             const auto players = gameMemory.players;
+
+            size_t spriteBatchIndex = 0;
+
             for (size_t i = 0; i < players.size(); ++i)
             {
                 ZeroXGame::GameEntity* playerEntity = players.data() + i;
@@ -177,7 +180,7 @@ namespace ZeroX
                 renderer::Command updateTransformCommand{ .type = renderer::CommandType::UPDATE_ENTITY_TRANSFORM };
 
                 size_t batchIndex   = 0;
-                size_t entityIndex  = i;
+                size_t entityIndex  = spriteBatchIndex + i;
 
                 const float speed = i * 0.25f;
 
@@ -189,6 +192,32 @@ namespace ZeroX
 
                 frame.renderCommands.push_back({ updateTransformCommand });
             }
+
+            spriteBatchIndex += players.size();
+
+            const auto enemies = gameMemory.enemies;
+
+            for (size_t i = 0; i < enemies.size(); ++i)
+            {
+                ZeroXGame::GameEntity* enemyEntity = enemies.data() + i;
+
+                renderer::Command updateTransformCommand{ .type = renderer::CommandType::UPDATE_ENTITY_TRANSFORM };
+
+                size_t batchIndex   = 0;
+                size_t entityIndex  = spriteBatchIndex + i;
+
+                const float speed = i * 0.25f;
+
+                enemyEntity->transform.localToWorld[3].x += m_frameDeltaTime.load(std::memory_order_acquire) * speed;
+
+                std::memcpy(updateTransformCommand.data, &batchIndex, sizeof(size_t));
+                std::memcpy(updateTransformCommand.data + sizeof(size_t), &entityIndex, sizeof(size_t));
+                std::memcpy(updateTransformCommand.data + 2 * sizeof(size_t), &(enemyEntity->transform), sizeof(ZeroXGame::Transform));
+
+                frame.renderCommands.push_back({ updateTransformCommand });
+            }
+
+            spriteBatchIndex += enemies.size();
 
             while(m_runGame.load(std::memory_order_acquire) && !frameBuffer->push(frame))
             {
@@ -262,7 +291,7 @@ namespace ZeroX
             "cameraView"
         };
 
-        const size_t entityCount = 4;
+        const size_t entityCount = 5;
 
         size_t unlitColorIndices[2] = { 0, 1 };
         size_t spriteIndices[2] = { 2, 3 };
