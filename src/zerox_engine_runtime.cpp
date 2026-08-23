@@ -223,10 +223,6 @@ namespace ZeroX
 
     void EngineRuntime::executeRenderLoop(renderer::FrameBuffer* frameBuffer)
     {
-        renderer::PlatformFunctions platformFunctions {
-            .getFileSize = &platform::getFileSize,
-            .readFile = &platform::readFile };
-
         renderer::Vertex quadVertices[4] = {
             { { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } },
             { { -0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
@@ -341,7 +337,7 @@ namespace ZeroX
         renderer::Allocator renderAllocator;
         renderer::allocateGraphicsResources(&renderAllocator, &graphicsConfig);
         renderer::MutableGraphicsMemory mutableGraphicsMemory = renderer::readGraphicsMemory(&renderAllocator);
-        renderer::initializeGraphicsResources(mutableGraphicsMemory, &graphicsConfig, &platformFunctions);
+        renderer::initializeGraphicsResources(mutableGraphicsMemory, &graphicsConfig);
         renderer::initializeGraphicsState();
 
         glfwSetWindowUserPointer(window, &mutableGraphicsMemory);

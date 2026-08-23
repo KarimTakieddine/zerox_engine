@@ -34,10 +34,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${GAME_DIR}/include
     ${PLATFORM_DIR}/include
     ${RENDERER_DIR}/include
-    ${GLAD_DIR}/include
+    "${RENDERER_DIR}/zerox_engine_glad/include"
     ${MEMORY_READER_DIR}/include)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE zerox_engine_platform GL zerox_engine_glad zerox_engine_renderer glfw)
+target_link_libraries(${PROJECT_NAME} PRIVATE zerox_engine_platform zerox_engine_renderer glfw)
 
 add_custom_command(TARGET Assets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${SHADERS_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${SHADERS_DIR}
