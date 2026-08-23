@@ -299,7 +299,7 @@ namespace ZeroX
 
         renderer::Texture textures[1] = {
             {
-                .path = "./textures/awk.png",
+                .path = "./textures/the_mega_texture.png",
                 .wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
                 .wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
                 .minFilter = renderer::Filter::NEAREST,
