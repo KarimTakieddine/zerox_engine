@@ -7,16 +7,14 @@ set(INCLUDE_DIR include)
 set(SRC_DIR src)
 set(SHADERS_DIR shaders)
 set(BINARY_DIR bin)
-set(PLATFORM_DIR zerox_engine_platform)
-set(GLAD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_glad")
-set(RENDERER_DIR zerox_engine_renderer)
-set(MEMORY_READER_DIR memory_reader)
+set(PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_platform")
+set(RENDERER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_renderer")
+set(MEMORY_READER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/memory_reader")
 set(GAME_DIR zerox_game)
 
 Project(${PROJECT_NAME})
 
 add_subdirectory(${PLATFORM_DIR})
-add_subdirectory(${GLAD_DIR})
 add_subdirectory(${RENDERER_DIR})
 
 list(APPEND SOURCES
