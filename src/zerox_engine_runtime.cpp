@@ -259,7 +259,7 @@ namespace ZeroX
         };
 
         renderer::Frustum cameraFrustum = {
-            .fov    = 45.0f,
+            .fov    = 80.0f,
             .aspect = 1920.0f / 1080.0f,
             .near   = 1.0f,
             .far    = 100.0f
