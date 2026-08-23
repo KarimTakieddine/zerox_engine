@@ -13,9 +13,9 @@
 #include <renderer.hpp>
 #include <shader.h>
 #include <texture.h>
-#include <zerox_game_memory.hpp>
 
 #include "game_library.h"
+#include "render_command_generator.h"
 #include "zerox_engine_runtime.h"
 
 namespace
@@ -177,20 +177,14 @@ namespace ZeroX
             {
                 ZeroXGame::GameEntity* playerEntity = players.data() + i;
 
-                renderer::Command updateTransformCommand{ .type = renderer::CommandType::UPDATE_ENTITY_TRANSFORM };
+                const size_t batchIndex   = 0;
+                const size_t entityIndex  = spriteBatchIndex + i;
 
-                size_t batchIndex   = 0;
-                size_t entityIndex  = spriteBatchIndex + i;
+                const float speed = (i + 1) * 0.25f;
+                playerEntity->transform.localToWorld[3].x -= m_frameDeltaTime.load(std::memory_order_acquire) * speed;
 
-                const float speed = i * 0.25f;
-
-                playerEntity->transform.localToWorld[3].x += m_frameDeltaTime.load(std::memory_order_acquire) * speed;
-
-                std::memcpy(updateTransformCommand.data, &batchIndex, sizeof(size_t));
-                std::memcpy(updateTransformCommand.data + sizeof(size_t), &entityIndex, sizeof(size_t));
-                std::memcpy(updateTransformCommand.data + 2 * sizeof(size_t), &(playerEntity->transform), sizeof(ZeroXGame::Transform));
-
-                frame.renderCommands.push_back({ updateTransformCommand });
+                frame.renderCommands.push_back(generateRenderCommand(playerEntity->transform, batchIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(playerEntity->material, batchIndex, entityIndex));
             }
 
             spriteBatchIndex += players.size();
@@ -201,20 +195,14 @@ namespace ZeroX
             {
                 ZeroXGame::GameEntity* enemyEntity = enemies.data() + i;
 
-                renderer::Command updateTransformCommand{ .type = renderer::CommandType::UPDATE_ENTITY_TRANSFORM };
-
                 size_t batchIndex   = 0;
                 size_t entityIndex  = spriteBatchIndex + i;
 
-                const float speed = i * 0.25f;
-
+                const float speed = (i + 1) * 0.75f;
                 enemyEntity->transform.localToWorld[3].x += m_frameDeltaTime.load(std::memory_order_acquire) * speed;
 
-                std::memcpy(updateTransformCommand.data, &batchIndex, sizeof(size_t));
-                std::memcpy(updateTransformCommand.data + sizeof(size_t), &entityIndex, sizeof(size_t));
-                std::memcpy(updateTransformCommand.data + 2 * sizeof(size_t), &(enemyEntity->transform), sizeof(ZeroXGame::Transform));
-
-                frame.renderCommands.push_back({ updateTransformCommand });
+                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->transform, batchIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->material, batchIndex, entityIndex));
             }
 
             spriteBatchIndex += enemies.size();
@@ -318,7 +306,7 @@ namespace ZeroX
 
         renderer::Texture textures[1] = {
             {
-                .path = "./textures/the_mega_texture.png",
+                .path = "./textures/awk.png",
                 .wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
                 .wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
                 .minFilter = renderer::Filter::NEAREST,

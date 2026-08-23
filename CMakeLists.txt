@@ -11,7 +11,7 @@ set(BINARY_DIR bin)
 set(PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_platform")
 set(RENDERER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_renderer")
 set(MEMORY_READER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/memory_reader")
-set(GAME_DIR zerox_game)
+set(GAME_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../zerox_game")
 
 Project(${PROJECT_NAME})
 
@@ -21,6 +21,7 @@ add_subdirectory(${RENDERER_DIR})
 list(APPEND SOURCES
     ${SRC_DIR}/game_library.cpp
     ${SRC_DIR}/game_library_watcher.cpp
+    ${SRC_DIR}/render_command_generator.cpp
     ${SRC_DIR}/zerox_engine_runtime.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
 
