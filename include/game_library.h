@@ -21,7 +21,7 @@ namespace ZeroX
     {
     public:
         typedef size_t(CDECL* GameInitFunc)(GameAllocator*);
-        typedef bool(CDECL* GameUpdateFunc)(GameAllocator*);
+        typedef bool(CDECL* GameUpdateFunc)(GameAllocator*, double);
 
         GameInitFunc initGame       { nullptr };
         GameUpdateFunc updateGame   { nullptr };

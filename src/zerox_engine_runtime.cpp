@@ -163,7 +163,7 @@ namespace ZeroX
                 }
             }
 
-            sharedLibrary->getFunctions().updateGame(&gameAllocator);
+            sharedLibrary->getFunctions().updateGame(&gameAllocator, m_frameDeltaTime.load(std::memory_order_acquire));
 
             ZeroXGame::GameMemory gameMemory = ZeroXGame::readGameMemory(&gameAllocator);
 
@@ -171,20 +171,17 @@ namespace ZeroX
 
             const auto players = gameMemory.players;
 
-            size_t spriteBatchIndex = 0;
+            const size_t spriteIndex    = 0;
+            size_t spriteBatchIndex     = 0;
 
             for (size_t i = 0; i < players.size(); ++i)
             {
                 ZeroXGame::GameEntity* playerEntity = players.data() + i;
 
-                const size_t batchIndex   = 0;
-                const size_t entityIndex  = spriteBatchIndex + i;
+                const size_t entityIndex = spriteBatchIndex + i;
 
-                const float speed = (i + 1) * 0.25f;
-                playerEntity->transform.localToWorld[3].x -= m_frameDeltaTime.load(std::memory_order_acquire) * speed;
-
-                frame.renderCommands.push_back(generateRenderCommand(playerEntity->transform, batchIndex, entityIndex));
-                frame.renderCommands.push_back(generateRenderCommand(playerEntity->material, batchIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(playerEntity->transform, spriteIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(playerEntity->material, spriteIndex, entityIndex));
             }
 
             spriteBatchIndex += players.size();
@@ -195,14 +192,10 @@ namespace ZeroX
             {
                 ZeroXGame::GameEntity* enemyEntity = enemies.data() + i;
 
-                size_t batchIndex   = 0;
-                size_t entityIndex  = spriteBatchIndex + i;
+                const size_t entityIndex = spriteBatchIndex + i;
 
-                const float speed = (i + 1) * 0.75f;
-                enemyEntity->transform.localToWorld[3].x += m_frameDeltaTime.load(std::memory_order_acquire) * speed;
-
-                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->transform, batchIndex, entityIndex));
-                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->material, batchIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->transform, spriteIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->material, spriteIndex, entityIndex));
             }
 
             spriteBatchIndex += enemies.size();
