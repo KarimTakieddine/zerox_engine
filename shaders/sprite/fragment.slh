@@ -1,0 +1,16 @@
+#version 450 core
+
+in vec3 vertexColor;
+in vec2 vertexUV;
+
+uniform vec4 materialColor;
+uniform vec2 textureOffset;
+
+uniform sampler2D textureSampler;
+
+out vec4 oColor;
+
+void main() {
+    oColor      = texture(textureSampler, vertexUV + textureOffset) * vec4(vertexColor, 1.0) * materialColor;
+    oColor.rgb *= oColor.a;
+}

@@ -235,9 +235,11 @@ namespace ZeroX
 
         renderer::Mesh meshes[1] = { { quadVertices, quadTriangles, 4, 6 } };
 
-        renderer::Shader shaderList[2] = {
-            { "./shaders/3d_transform_vertex.slh", renderer::Shader::Type::VERTEX },
-            { "./shaders/3d_transform_fragment.slh", renderer::Shader::Type::FRAGMENT },
+        renderer::Shader shaderList[4] = {
+            { "./shaders/unlit_color/vertex.slh", renderer::Shader::Type::VERTEX },
+            { "./shaders/unlit_color/fragment.slh", renderer::Shader::Type::FRAGMENT },
+            { "./shaders/sprite/vertex.slh", renderer::Shader::Type::VERTEX },
+            { "./shaders/sprite/fragment.slh", renderer::Shader::Type::FRAGMENT },
         };
 
         renderer::Eye cameraEye = {
@@ -262,14 +264,17 @@ namespace ZeroX
 
         const size_t entityCount = 4;
 
-        size_t shaderIndices[2] = { 0, 1 };
+        size_t unlitColorIndices[2] = { 0, 1 };
+        size_t spriteIndices[2] = { 2, 3 };
 
-        renderer::ShaderCompileStep shaderCompileSteps[1] = {
-            { .shaderIndices = shaderIndices, .shaderCount = 2, .programIndex = 0 }
+        renderer::ShaderCompileStep shaderCompileSteps[2] = {
+            { .shaderIndices = unlitColorIndices, .shaderCount = 2, .programIndex = 0 },
+            { .shaderIndices = spriteIndices, .shaderCount = 2, .programIndex = 1 },
         };
 
-        renderer::ShaderLocationsLink shaderLocationsLinks[1] = {
-            { .locationsIndex = 0, .shaderProgramIndex = 0 }
+        renderer::ShaderLocationsLink shaderLocationsLinks[2] = {
+            { .locationsIndex = 0, .shaderProgramIndex = 0 },
+            { .locationsIndex = 1, .shaderProgramIndex = 1 },
         };
 
         renderer::RenderBatchConfig renderBatchConfigs[1] = {
@@ -308,12 +313,12 @@ namespace ZeroX
             .bufferCount = 3,
             .vertexArrayCount = 1,
             .textureCount = 1,
-            .shaderCount = 2,
-            .shaderProgramCount = 1,
-            .locationsDescriptorCount = 1,
+            .shaderCount = 4,
+            .shaderProgramCount = 2,
+            .locationsDescriptorCount = 2,
             .renderBatchCount = 1,
-            .compileStepCount = 1,
-            .locationsLinkCount = 1,
+            .compileStepCount = 2,
+            .locationsLinkCount = 2,
             .batchConfigCount = 1
         };
 
