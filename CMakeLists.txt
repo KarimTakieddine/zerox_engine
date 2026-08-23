@@ -6,6 +6,7 @@ set(PROJECT_NAME zerox_engine)
 set(INCLUDE_DIR include)
 set(SRC_DIR src)
 set(SHADERS_DIR shaders)
+set(TEXTURES_DIR textures)
 set(BINARY_DIR bin)
 set(PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_platform")
 set(RENDERER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_renderer")
@@ -41,6 +42,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE zerox_engine_platform zerox_engine
 
 add_custom_command(TARGET Assets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${SHADERS_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${SHADERS_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${TEXTURES_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${TEXTURES_DIR}
     VERBATIM)
 
 add_dependencies(${PROJECT_NAME} zerox_engine_platform zerox_engine_glad zerox_engine_renderer Assets)
@@ -48,5 +50,6 @@ add_dependencies(${PROJECT_NAME} zerox_engine_platform zerox_engine_glad zerox_e
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${SHADERS_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/${SHADERS_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${TEXTURES_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/${TEXTURES_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/"
     VERBATIM)

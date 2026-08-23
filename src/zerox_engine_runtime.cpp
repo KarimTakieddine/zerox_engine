@@ -12,6 +12,7 @@
 
 #include <renderer.hpp>
 #include <shader.h>
+#include <texture.h>
 #include <zerox_game_memory.hpp>
 
 #include "game_library.h"
@@ -281,9 +282,19 @@ namespace ZeroX
             }
         };
 
+        renderer::Texture textures[1] = {
+            {
+                .path = "./textures/the_mega_texture.png",
+                .wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
+                .wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
+                .minFilter = renderer::Filter::NEAREST,
+                .magFilter = renderer::Filter::NEAREST
+            }
+        };
+
         renderer::GraphicsConfig graphicsConfig = {
             .meshes = meshes,
-            .textures = nullptr,
+            .textures = textures,
             .renderEntityCounts = &entityCount,
             .shaders = shaderList,
             .cameraEye = &cameraEye,
@@ -296,7 +307,7 @@ namespace ZeroX
             .meshCount = 1,
             .bufferCount = 3,
             .vertexArrayCount = 1,
-            .textureCount = 0,
+            .textureCount = 1,
             .shaderCount = 2,
             .shaderProgramCount = 1,
             .locationsDescriptorCount = 1,
