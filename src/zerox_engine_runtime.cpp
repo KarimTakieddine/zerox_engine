@@ -1,5 +1,4 @@
 #include <filesystem>
-#include <iostream>
 
 #include <glad/glad.h>
 #include <GL/glx.h>
@@ -14,9 +13,10 @@
 #include <shader.h>
 #include <texture.h>
 
-#include "game_library.h"
 #include "render_command_generator.h"
+#include "zerox_engine_logger.h"
 #include "zerox_engine_runtime.h"
+#include "zerox_time.h"
 
 namespace
 {
@@ -30,7 +30,7 @@ namespace
         const auto pos = filename.find(extension);
         if (pos == std::string::npos)
         {
-            std::cout << "Failed to find extension in game library file" << std::endl;
+            LOG_ERROR << "Failed to find extension in game library file";
         }
 
         filename.insert(pos, "_" + std::to_string(suffix));
@@ -38,28 +38,6 @@ namespace
         destinationPath = gameDirectoryPath / filename;
 
         return platform::copyFile(gameLibraryPath.c_str(), destinationPath.c_str());
-    }
-
-    bool reloadGameLibrary(const std::filesystem::path gameDirectoryPath, const std::filesystem::path& gameLibraryPath, std::atomic<std::shared_ptr<ZeroX::GameLibrary>>& gameLibrary, uint64_t suffix)
-    {
-        if (platform::getFileSize(gameLibraryPath.c_str()) == 0)
-        {
-            return false;
-        }
-
-        std::filesystem::path destinationPath;
-        if (!::copyGameLibrary(gameDirectoryPath, gameLibraryPath, destinationPath, suffix))
-        {
-            std::cout << "Failed to copy file from: " << gameLibraryPath.c_str() << " to " << destinationPath.c_str() << std::endl;
-            return false;
-        }
-
-        if (!gameLibrary.load(std::memory_order_acquire)->load(destinationPath.c_str()))
-        {
-            return false;
-        }
-
-        return true;
     }
 
     void onWindowResize(GLFWwindow* window, int width, int height)
@@ -74,9 +52,9 @@ namespace
 
 namespace ZeroX
 {
-    void EngineRuntime::startGameThread(const char* gameLibraryDir, const char* gameLibraryName, renderer::FrameBuffer* frameBuffer)
+    void EngineRuntime::startGameThread(const GameConfig& config, renderer::FrameBuffer* frameBuffer)
     {
-        m_gameThread = std::thread(&EngineRuntime::executeGameLoop, this, gameLibraryDir, gameLibraryName, frameBuffer);
+        m_gameThread = std::thread(&EngineRuntime::executeGameLoop, this, config, frameBuffer);
     }
 
     void EngineRuntime::startRenderThread(renderer::FrameBuffer* frameBuffer)
@@ -84,86 +62,135 @@ namespace ZeroX
         m_rendererThread = std::thread(&EngineRuntime::executeRenderLoop, this, frameBuffer);
     }
 
-    void EngineRuntime::executeGameLoop(const char* gameLibraryDir, const char* gameLibraryName, renderer::FrameBuffer* frameBuffer)
+    bool EngineRuntime::startWatchingGameLibrary(const GameConfig& config)
     {
-        ZeroX::GameLibraryWatcher gameLibraryWatcher;
+        const std::filesystem::path gameDirectoryPath(config.gameLibraryDir);
+        if (!std::filesystem::is_directory(gameDirectoryPath))
+        {
+            LOG_ERROR << "Failed to start watching game library: " << gameDirectoryPath.string() << " is not a directory";
+            return false;
+        }
+
+        return m_gameLibraryWatcher->startWatching(gameDirectoryPath.c_str(), config.gameLibraryFile);
+    }
+
+    bool EngineRuntime::initializeGameLibrary(const GameConfig& config)
+    {
+        if (!startWatchingGameLibrary(config))
+        {
+            LOG_ERROR << "Failed to initialize game library: Could not start file watcher";
+            return false;
+        }
+
+        std::filesystem::path gameLibraryPath(config.gameLibraryDir);
+        gameLibraryPath /= config.gameLibraryFile;
+
+        if (!std::filesystem::exists(gameLibraryPath))
+        {
+            LOG_ERROR << "Failed to initialize game library: Is not a file: " << gameLibraryPath.c_str();
+            return false;
+        }
+
+        return m_gameLibrary->load(gameLibraryPath.c_str());
+    }
+
+    bool EngineRuntime::reloadGameLibrary(const GameConfig& config, uint64_t changeCounter)
+    {
+        const std::filesystem::path gameDirectoryPath(config.gameLibraryDir);
+        const std::filesystem::path gameLibraryPath = gameDirectoryPath / config.gameLibraryFile;
+ 
+        if (platform::getFileSize(gameLibraryPath.c_str()) == 0)
+        {
+            LOG_ERROR << "Failed to reload game library: File size is 0";
+            return false;
+        }
+
+        std::filesystem::path destinationPath;
+        if (!::copyGameLibrary(gameDirectoryPath, gameLibraryPath, destinationPath, changeCounter))
+        {
+            LOG_ERROR << "Failed to reload game library: Failed to copy file from " << gameLibraryPath.c_str() << " to " << destinationPath.c_str();
+            return false;
+        }
+
+        return m_gameLibrary->load(destinationPath.c_str());
+    }
+
+    void EngineRuntime::executeGameLoop(const GameConfig& config, renderer::FrameBuffer* frameBuffer)
+    {
+        m_gameLibraryWatcher    = std::make_unique<GameLibraryWatcher>();
+        m_gameLibrary           = std::make_unique<GameLibrary>();
+
+        assert(m_gameLibraryWatcher);
+        assert(m_gameLibrary);
+
+        if (!initializeGameLibrary(config))
+        {
+            LOG_ERROR << "Failed to initialize game library";
+            return;
+        }
+
+        LOG_INFO << "Successfully initialized game library";
 
         uint64_t fileChangeCounter = 0;
 
-        const std::filesystem::path gameDirectoryPath(gameLibraryDir);
-        if (!std::filesystem::is_directory(gameDirectoryPath))
-        {
-            return;
-        }
-
-        if (!gameLibraryWatcher.startWatching(gameLibraryDir, gameLibraryName))
-        {
-            return;
-        }
-
-        const std::filesystem::path gameLibraryPath = gameDirectoryPath / gameLibraryName;
-        if (!std::filesystem::exists(gameLibraryPath))
-        {
-            return;
-        }
-
         BumpAllocator<16> gameAllocator;
         gameAllocator.allocate(4096);
-
-        auto gameLibrary = std::make_shared<GameLibrary>();
-        if (!gameLibrary->load(gameLibraryPath.c_str()))
+        if (!m_gameLibrary->getFunctions().initGame(&gameAllocator))
         {
-            std::cout << "Failed to load game library" << std::endl;
+            LOG_ERROR << "Failed to initialize game library memory";
             return;
         }
 
-        gameLibrary->getFunctions().initGame(&gameAllocator);
-
-        std::atomic<std::shared_ptr<GameLibrary>> sharedGameLibrary(gameLibrary);
+        LOG_INFO << "Successfully initialized game library memory";
 
         m_gameFrameIndex.store(0, std::memory_order_relaxed);
 
         while (m_runGame.load(std::memory_order_acquire))
         {
-            const uint64_t watchCounter = gameLibraryWatcher.getChangeCounter();
+            const uint64_t watchCounter = m_gameLibraryWatcher->getChangeCounter();
 
             if (fileChangeCounter != watchCounter)
             {
-                if (!::reloadGameLibrary(gameDirectoryPath, gameLibraryPath, sharedGameLibrary, watchCounter))
+                if (!reloadGameLibrary(config, watchCounter))
                 {
-                    std::cout << "Failed to load game library" << std::endl;
-                }
-                else
-                {
-                    std::cout << "Re-loaded game library" << std::endl;
+                    LOG_ERROR << "Failed to reload game library. Change count is: " << fileChangeCounter;
+                    continue;
                 }
 
-                fileChangeCounter = gameLibraryWatcher.getChangeCounter();
+                LOG_INFO << "Successfully re-loaded game libary. Setting change count to: " << watchCounter;
+
+                fileChangeCounter = watchCounter;
             }
 
-            auto sharedLibrary = sharedGameLibrary.load(std::memory_order_acquire);
-            if (!sharedLibrary || !sharedLibrary->isLoaded() && !sharedLibrary->isValid())
+            if (!m_gameLibrary->isLoaded() || !m_gameLibrary->isValid())
             {
-                std::cout << "No shared game library found or successfully loaded" << std::endl;
+                LOG_INFO << "No loaded or valid game library was found";
                 continue;
             }
 
+            Time time{
+                .deltaTimeSeconds   = m_frameDeltaTime.load(std::memory_order_acquire),
+                .renderFrameIndex   = m_renderFrameIndex.load(std::memory_order_acquire),
+                .gameFrameIndex     = m_gameFrameIndex.load(std::memory_order_relaxed)
+            };
+
             // Wait for frame N - maxQueuedFrames
 
-            if (m_gameFrameIndex.load(std::memory_order_relaxed) >= 4)
+            const uint64_t maxQueuedFrames = config.maxQueuedFrames;
+            if (time.gameFrameIndex >= maxQueuedFrames)
             {
-                const uint64_t renderFrameIndex = m_renderFrameIndex.load(std::memory_order_acquire);
-                const uint64_t gameFrameIndex   = m_gameFrameIndex.load(std::memory_order_relaxed);
+                uint64_t difference = time.gameFrameIndex - time.renderFrameIndex;
 
-                uint64_t difference = gameFrameIndex - renderFrameIndex;
-
-                if (difference >= 4)
+                if (difference >= maxQueuedFrames)
                 {
-                    m_renderFrameIndex.wait(renderFrameIndex);
+                    m_renderFrameIndex.wait(time.renderFrameIndex);
                 }
             }
 
-            sharedLibrary->getFunctions().updateGame(&gameAllocator, m_frameDeltaTime.load(std::memory_order_acquire));
+            const double alpha      = 2.0 / 30;
+            time.smoothDeltaTime    = ( time.smoothDeltaTime * alpha ) + ( time.deltaTimeSeconds * (1.0 - alpha) );
+
+            m_gameLibrary->getFunctions().updateGame(&gameAllocator, time.smoothDeltaTime);
 
             ZeroXGame::GameMemory gameMemory = ZeroXGame::readGameMemory(&gameAllocator);
 
@@ -206,9 +233,12 @@ namespace ZeroX
             }
 
             m_gameFrameIndex.fetch_add(1, std::memory_order_relaxed);
+
+            assert(ZeroX::globalEngineLogger);
+            ZeroX::globalEngineLogger->processMessages();
         }
 
-        gameLibraryWatcher.stopWatching();
+        m_gameLibraryWatcher->stopWatching();
     }
 
     void EngineRuntime::stopGameThread()

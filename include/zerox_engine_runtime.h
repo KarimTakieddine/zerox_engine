@@ -2,22 +2,31 @@
 
 #include <render_frame_buffer.h>
 
+#include "game_library.h"
 #include "game_library_watcher.h"
+#include "zerox_engine_config.h"
 
 namespace ZeroX
 {
     class EngineRuntime
     {
     public:
-        void startGameThread(const char* gameLibraryDir, const char* gameLibraryName, renderer::FrameBuffer* frameBuffer);
+        void startGameThread(const GameConfig& config, renderer::FrameBuffer* frameBuffer);
         void startRenderThread(renderer::FrameBuffer* frameBuffer);
 
         void stopGameThread();
         void waitForWindowClose();
 
     private:
-        void executeGameLoop(const char* gameLibraryDir, const char* gameLibraryName, renderer::FrameBuffer* frameBuffer);
+        void executeGameLoop(const GameConfig& config, renderer::FrameBuffer* frameBuffer);
         void executeRenderLoop(renderer::FrameBuffer* frameBuffer);
+
+        bool initializeGameLibrary(const GameConfig& config);
+        bool startWatchingGameLibrary(const GameConfig& config);
+        bool reloadGameLibrary(const GameConfig& config, uint64_t changeCounter);
+
+        std::unique_ptr<GameLibraryWatcher> m_gameLibraryWatcher{ nullptr };
+        std::unique_ptr<GameLibrary> m_gameLibrary              { nullptr };
 
         std::thread m_gameThread;
         std::thread m_rendererThread;

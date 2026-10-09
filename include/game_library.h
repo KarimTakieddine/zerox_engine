@@ -20,7 +20,7 @@ namespace ZeroX
     struct GameLibraryFunctions
     {
     public:
-        typedef size_t(CDECL* GameInitFunc)(GameAllocator*);
+        typedef bool(CDECL* GameInitFunc)(GameAllocator*);
         typedef bool(CDECL* GameUpdateFunc)(GameAllocator*, double);
 
         GameInitFunc initGame       { nullptr };
