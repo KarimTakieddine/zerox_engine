@@ -425,8 +425,18 @@ namespace ZeroX
                 renderer::processFrame(mutableGraphicsMemory, &renderFrame);
             }
 
+            const glm::vec2 worldDimensions = renderer::getViewportWorldDimensions(
+                mutableGraphicsMemory.camera.data(),
+                mutableGraphicsMemory.cameraEye.data(),
+                mutableGraphicsMemory.cameraFrustum.data());
+
+            int clientWidth{ 0 };
+            int clientHeight{ 0 };
+
+            glfwGetWindowSize(window, &clientWidth, &clientHeight);
+
             renderer::clearFrameBuffer();
-            renderer::render(renderer::freezeGraphicsMemory(mutableGraphicsMemory));
+            renderer::render(mutableGraphicsMemory, renderer::getPixelsPerUnit(clientWidth, clientHeight, worldDimensions));
 
             glfwSwapBuffers(window);
 
