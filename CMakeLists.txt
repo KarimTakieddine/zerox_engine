@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 4.3.3 FATAL_ERROR)
 set(CMAKE_CXX_STANDARD 20 REQUIRED)
 
 set(PROJECT_NAME zerox_engine)
+set(AUDIO_DIR audio)
+set(MINIAUDIO_DIR miniaudio)
 set(INCLUDE_DIR include)
 set(SRC_DIR src)
 set(SHADERS_DIR shaders)
@@ -22,8 +24,10 @@ list(APPEND SOURCES
     ${SRC_DIR}/game_library.cpp
     ${SRC_DIR}/game_library_watcher.cpp
     ${SRC_DIR}/render_command_generator.cpp
+    ${SRC_DIR}/zerox_miniaudio_player.cpp
     ${SRC_DIR}/zerox_engine_logger.cpp
     ${SRC_DIR}/zerox_engine_runtime.cpp
+    ${MINIAUDIO_DIR}/miniaudio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
@@ -34,6 +38,7 @@ find_package(glfw3 3.4 REQUIRED)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${INCLUDE_DIR}
+    ${MINIAUDIO_DIR}
     ${GAME_DIR}/include
     ${PLATFORM_DIR}/include
     ${RENDERER_DIR}/include
@@ -43,6 +48,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE zerox_engine_platform zerox_engine_renderer glfw)
 
 add_custom_command(TARGET Assets POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${AUDIO_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${AUDIO_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${SHADERS_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${SHADERS_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${TEXTURES_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${TEXTURES_DIR}
     VERBATIM)
@@ -51,6 +57,7 @@ add_dependencies(${PROJECT_NAME} zerox_engine_platform zerox_engine_glad zerox_e
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${AUDIO_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/${AUDIO_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${SHADERS_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/${SHADERS_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/${TEXTURES_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/${TEXTURES_DIR}"
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${PROJECT_NAME}>" "${CMAKE_CURRENT_SOURCE_DIR}/${BINARY_DIR}/$<CONFIG>/"

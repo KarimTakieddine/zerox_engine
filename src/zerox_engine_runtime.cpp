@@ -16,6 +16,7 @@
 #include "render_command_generator.h"
 #include "zerox_engine_logger.h"
 #include "zerox_engine_runtime.h"
+#include "zerox_miniaudio_player.h"
 #include "zerox_time.h"
 
 namespace
@@ -117,8 +118,26 @@ namespace ZeroX
 
     void EngineRuntime::executeGameLoop(const GameConfig& config, renderer::FrameBuffer* frameBuffer)
     {
+        m_audioPlayer           = std::make_unique<MiniAudioPlayer>();
         m_gameLibraryWatcher    = std::make_unique<GameLibraryWatcher>();
         m_gameLibrary           = std::make_unique<GameLibrary>();
+
+        AudioSound audioSounds[1] = {
+            { "./audio/character_jump.mp3", SoundType::SOUND_EFFECT }
+        };
+
+        AudioConfig audioConfig = {
+            .sounds     = audioSounds,
+            .soundCount = 1
+        };
+
+        if (!m_audioPlayer->initialize(audioConfig))
+        {
+            LOG_ERROR << "Failed to initialize audio player";
+            return;
+        }
+
+        m_audioPlayer->playSound("character_jump.mp3");
 
         assert(m_gameLibraryWatcher);
         assert(m_gameLibrary);

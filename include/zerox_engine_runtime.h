@@ -4,6 +4,7 @@
 
 #include "game_library.h"
 #include "game_library_watcher.h"
+#include "zerox_audio_player.h"
 #include "zerox_engine_config.h"
 
 namespace ZeroX
@@ -25,6 +26,7 @@ namespace ZeroX
         bool startWatchingGameLibrary(const GameConfig& config);
         bool reloadGameLibrary(const GameConfig& config, uint64_t changeCounter);
 
+        std::unique_ptr<IAudioPlayer> m_audioPlayer             { nullptr };
         std::unique_ptr<GameLibraryWatcher> m_gameLibraryWatcher{ nullptr };
         std::unique_ptr<GameLibrary> m_gameLibrary              { nullptr };
 
