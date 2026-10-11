@@ -36,7 +36,7 @@ int main(int argc, char** argv)
         ZeroX::GameConfig gameConfig = {
             .gameLibraryDir     = "/home/mouns/Repositories/zerox_game/build",
             .gameLibraryFile    = "libzerox_game.so",
-            .maxQueuedFrames    = 1
+            .maxQueuedFrames    = 4
         };
 
         ZeroX::AudioSound audioSounds[1] = {
