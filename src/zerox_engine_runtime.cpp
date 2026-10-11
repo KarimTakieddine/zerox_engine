@@ -76,7 +76,10 @@ namespace ZeroX
             std::memcpy(setAspectRatioCommand.data, &width, sizeof(int));
             std::memcpy(setAspectRatioCommand.data + sizeof(int), &height, sizeof(int));
             frame.renderCommands.push_back(setAspectRatioCommand);
-            while (!renderFrameBuffer.push(frame));
+            while (!renderFrameBuffer.push(frame))
+            {
+                
+            }
         });
 
         m_window->unbindGraphicsContext();
@@ -97,10 +100,14 @@ namespace ZeroX
         else
         {
             LOG_INFO << "Successfully initialized game libary. Setting change count to: " << libraryChangeCounter;
+        }
 
-            if (!m_gameLibrary->getFunctions().initGame(&gameAllocator))
-                LOG_WARN << "Failed to initialize game library memory";
-
+        if (!m_gameLibrary->getFunctions().initGame(&gameAllocator))
+        {
+            LOG_WARN << "Failed to initialize game library memory";
+        }
+        else
+        {
             LOG_INFO << "Successfully initialized game library memory";
         }
 
@@ -155,6 +162,52 @@ namespace ZeroX
             }
 
             // update game
+
+            m_gameLibrary->getFunctions().updateGame(&gameAllocator, 0.016);
+
+            // TODO
+
+            // Submit render commands
+
+            ZeroXGame::GameMemory gameMemory = ZeroXGame::readGameMemory(&gameAllocator);
+
+            renderer::Frame frame;
+
+            const auto players = gameMemory.players;
+
+            const size_t spriteIndex    = 0;
+            size_t spriteBatchIndex     = 0;
+
+            for (size_t i = 0; i < players.size(); ++i)
+            {
+                ZeroXGame::GameEntity* playerEntity = players.data() + i;
+
+                const size_t entityIndex = spriteBatchIndex + i;
+
+                frame.renderCommands.push_back(generateRenderCommand(playerEntity->transform, spriteIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(playerEntity->material, spriteIndex, entityIndex));
+            }
+
+            spriteBatchIndex += players.size();
+
+            const auto enemies = gameMemory.enemies;
+
+            for (size_t i = 0; i < enemies.size(); ++i)
+            {
+                ZeroXGame::GameEntity* enemyEntity = enemies.data() + i;
+
+                const size_t entityIndex = spriteBatchIndex + i;
+
+                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->transform, spriteIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->material, spriteIndex, entityIndex));
+            }
+
+            spriteBatchIndex += enemies.size();
+
+            while(!m_window->shouldClose() && !renderFrameBuffer.push(frame))
+            {
+                
+            }
 
             globalEngineLogger->processMessages();
 
@@ -350,15 +403,21 @@ namespace ZeroX
 
         while (m_runRenderer.load(std::memory_order_acquire))
         {
-            // Render loop
-
-            renderer::clearFrameBuffer();
-
             renderer::Frame renderFrame;
             if (frameBuffer->pop(renderFrame))
             {
                 renderer::processFrame(mutableGraphicsMemory, &renderFrame);
             }
+
+            const IWindow::Size clientSize = m_window->getSize();
+
+            const glm::vec2 worldDimensions = renderer::getViewportWorldDimensions(
+                mutableGraphicsMemory.camera.data(),
+                mutableGraphicsMemory.cameraEye.data(),
+                mutableGraphicsMemory.cameraFrustum.data());
+
+            renderer::clearFrameBuffer();
+            renderer::render(mutableGraphicsMemory, renderer::getPixelsPerUnit(clientSize.width, clientSize.height, worldDimensions));
 
             m_window->swapBuffers();
 
@@ -526,19 +585,6 @@ namespace ZeroX
     //     {
     //         m_gameThread.join();
     //     }
-    // }
-
-    // void EngineRuntime::waitForWindowClose()
-    // {
-    //     if (m_rendererThread.joinable())
-    //     {
-    //         m_rendererThread.join();
-    //     }
-    // }
-
-    // const std::unique_ptr<IWindow>& EngineRuntime::getWindow() const
-    // {
-    //     return m_window;
     // }
 
     // void EngineRuntime::executeRenderLoop(renderer::FrameBuffer* frameBuffer)

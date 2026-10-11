@@ -34,9 +34,9 @@ int main(int argc, char** argv)
         std::unique_ptr<ZeroX::EngineRuntime> engineRuntime = std::make_unique<ZeroX::EngineRuntime>(windowConfig);
 
         ZeroX::GameConfig gameConfig = {
-            "/home/mouns/Repositories/zerox_game/build",
-            "libzerox_game.so",
-            1
+            .gameLibraryDir     = "/home/mouns/Repositories/zerox_game/build",
+            .gameLibraryFile    = "libzerox_game.so",
+            .maxQueuedFrames    = 1
         };
 
         ZeroX::AudioSound audioSounds[1] = {
