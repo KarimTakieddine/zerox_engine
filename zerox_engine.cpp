@@ -39,7 +39,16 @@ int main(int argc, char** argv)
             1
         };
 
-        engineRuntime->run(gameConfig);
+        ZeroX::AudioSound audioSounds[1] = {
+            { "./audio/character_jump.mp3", ZeroX::SoundType::SOUND_EFFECT }
+        };
+
+        ZeroX::AudioConfig audioConfig = {
+            .sounds     = audioSounds,
+            .soundCount = 1
+        };
+
+        engineRuntime->run(gameConfig, audioConfig);
     }
     catch (const std::exception& e)
     {

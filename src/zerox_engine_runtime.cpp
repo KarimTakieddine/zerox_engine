@@ -65,7 +65,7 @@ namespace ZeroX
         glfwTerminate();
     }
 
-    void EngineRuntime::run(const GameConfig& config)
+    void EngineRuntime::run(const GameConfig& gameConfig, const AudioConfig& audioConfig)
     {
         renderer::FrameBuffer renderFrameBuffer;
         renderFrameBuffer.allocate(64);
@@ -85,12 +85,30 @@ namespace ZeroX
         m_gameLibraryWatcher    = std::make_unique<GameLibraryWatcher>();
         m_gameLibrary           = std::make_unique<GameLibrary>();
 
+        BumpAllocator<16> gameAllocator;
+        gameAllocator.allocate(4096);
+
         uint64_t libraryChangeCounter = 0;
 
-        if (!initializeGameLibrary(config))
-            throw std::runtime_error("Failed to initialize game library");
+        if (!initializeGameLibrary(gameConfig))
+        {
+            LOG_WARN << "Failed to initialize game library";
+        }
+        else
+        {
+            LOG_INFO << "Successfully initialized game libary. Setting change count to: " << libraryChangeCounter;
 
-        LOG_INFO << "Successfully initialized game libary. Setting change count to: " << libraryChangeCounter;
+            if (!m_gameLibrary->getFunctions().initGame(&gameAllocator))
+                LOG_WARN << "Failed to initialize game library memory";
+
+            LOG_INFO << "Successfully initialized game library memory";
+        }
+
+        m_audioPlayer = std::make_unique<MiniAudioPlayer>();
+        if (!m_audioPlayer->initialize(audioConfig))
+            throw std::runtime_error("Failed to initialize audio player");
+
+        LOG_INFO << "Successfully initialized audio player";
 
         uint64_t frameIndex{ 0 };
 
@@ -104,8 +122,8 @@ namespace ZeroX
 
             if (libraryChangeCounter != watchCounter)
             {
-                if (!reloadGameLibrary(config, watchCounter))
-                    LOG_WARN << "Failed to re-load game library file: " << config.gameLibraryFile;
+                if (!reloadGameLibrary(gameConfig, watchCounter))
+                    LOG_WARN << "Failed to re-load game library file: " << gameConfig.gameLibraryFile;
 
                 LOG_INFO << "Successfully re-loaded game libary. Setting change count to: " << watchCounter;
 
@@ -125,7 +143,7 @@ namespace ZeroX
 
             const uint64_t renderFrameIndex = m_renderFrameIndex.load(std::memory_order_acquire);
 
-            const uint64_t maxQueuedFrames = config.maxQueuedFrames;
+            const uint64_t maxQueuedFrames = gameConfig.maxQueuedFrames;
             if (frameIndex >= maxQueuedFrames)
             {
                 int64_t difference = frameIndex - renderFrameIndex;
@@ -137,7 +155,6 @@ namespace ZeroX
             }
 
             // update game
-            // process messages
 
             globalEngineLogger->processMessages();
 
