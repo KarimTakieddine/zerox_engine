@@ -15,7 +15,9 @@ namespace ZeroX
     public:
         EngineRuntime(const WindowConfig& config);
         ~EngineRuntime();
-        void run();
+
+        void run(const GameConfig& config);
+        void stopRendering();
 
         void startGameThread(const GameConfig& config, renderer::FrameBuffer* frameBuffer);
         // void startRenderThread(renderer::FrameBuffer* frameBuffer);
