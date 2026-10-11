@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <stdexcept>
 
 #include <glad/glad.h>
 #include <GL/glx.h>
@@ -16,6 +17,7 @@
 #include "render_command_generator.h"
 #include "zerox_engine_logger.h"
 #include "zerox_engine_runtime.h"
+#include "zerox_glfw_window.h"
 #include "zerox_miniaudio_player.h"
 #include "zerox_time.h"
 
@@ -53,15 +55,57 @@ namespace
 
 namespace ZeroX
 {
+    EngineRuntime::EngineRuntime(const WindowConfig& config)
+    {
+        if (!glfwInit())
+        {
+            const char* description{ nullptr };
+            int code = glfwGetError(&description);
+            throw std::runtime_error("Failed to intialize GLFW library. Error code: " + std::to_string(code) + " - " + std::string(description));
+        }
+
+        m_window = std::make_unique<GLFWWindow>(config);
+        m_window->bindGraphicsContext();
+    }
+
+    EngineRuntime::~EngineRuntime()
+    {
+        m_window.reset();
+
+        glfwTerminate();
+    }
+
+    void EngineRuntime::run()
+    {
+        // renderer::FrameBuffer renderFrameBuffer;
+        // renderFrameBuffer.allocate(64);
+
+        // m_rendererThread = std::thread(&EngineRuntime::render, this, &renderFrameBuffer);
+
+        while (!m_window->shouldClose())
+        {
+            m_window->processEvents();
+
+            // update input
+            // wait for render thread
+            // update game
+            // process messages
+
+            // TODO(Karim): Move to render thread!
+    
+            m_window->swapBuffers();
+        }
+    }
+
     void EngineRuntime::startGameThread(const GameConfig& config, renderer::FrameBuffer* frameBuffer)
     {
         m_gameThread = std::thread(&EngineRuntime::executeGameLoop, this, config, frameBuffer);
     }
 
-    void EngineRuntime::startRenderThread(renderer::FrameBuffer* frameBuffer)
-    {
-        m_rendererThread = std::thread(&EngineRuntime::executeRenderLoop, this, frameBuffer);
-    }
+    // void EngineRuntime::startRenderThread(renderer::FrameBuffer* frameBuffer)
+    // {
+    //     m_rendererThread = std::thread(&EngineRuntime::executeRenderLoop, this, frameBuffer);
+    // }
 
     bool EngineRuntime::startWatchingGameLibrary(const GameConfig& config)
     {
@@ -114,6 +158,125 @@ namespace ZeroX
         }
 
         return m_gameLibrary->load(destinationPath.c_str());
+    }
+
+    void EngineRuntime::render(renderer::FrameBuffer* frameBuffer)
+    {
+        m_window->bindGraphicsContext();
+
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+        {
+            LOG_ERROR << "Failed to initialize rendering logic. GLAD GL function loading failed";
+            return;
+        }
+
+        renderer::Vertex quadVertices[4] = {
+            { { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } },
+            { { -0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
+            { { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } },
+            { { 0.5f, -0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
+        };
+
+        unsigned int quadTriangles[6] = { 0, 2, 1, 0, 3, 2 };
+
+        renderer::Mesh meshes[1] = { { quadVertices, quadTriangles, 4, 6 } };
+
+        renderer::Shader shaderList[4] = {
+            { "./shaders/unlit_color/vertex.slh", renderer::Shader::Type::VERTEX },
+            { "./shaders/unlit_color/fragment.slh", renderer::Shader::Type::FRAGMENT },
+            { "./shaders/sprite/vertex.slh", renderer::Shader::Type::VERTEX },
+            { "./shaders/sprite/fragment.slh", renderer::Shader::Type::FRAGMENT },
+        };
+
+        renderer::Eye cameraEye = {
+            .position   = glm::vec3{ 0.0f, 0.0f, 10.0f },
+            .target	    = glm::vec3{ 0.0f, 0.0f, 0.0f },
+            .up		    = glm::vec3{ 0.0f, 1.0f, 0.0f }
+        };
+
+        renderer::Frustum cameraFrustum = {
+            .fov    = 80.0f,
+            .aspect = 1920.0f / 1080.0f,
+            .near   = 1.0f,
+            .far    = 100.0f
+        };
+
+        const char* cameraUniformNames[4] = {
+            "cameraProjection",
+            "cameraLocalToWorld",
+            "cameraLocalRotation",
+            "cameraView"
+        };
+
+        const size_t entityCount = 5;
+
+        size_t unlitColorIndices[2] = { 0, 1 };
+        size_t spriteIndices[2] = { 2, 3 };
+
+        renderer::ShaderCompileStep shaderCompileSteps[2] = {
+            { .shaderIndices = unlitColorIndices, .shaderCount = 2, .programIndex = 0 },
+            { .shaderIndices = spriteIndices, .shaderCount = 2, .programIndex = 1 },
+        };
+
+        renderer::ShaderLocationsLink shaderLocationsLinks[2] = {
+            { .locationsIndex = 0, .shaderProgramIndex = 0 },
+            { .locationsIndex = 1, .shaderProgramIndex = 1 },
+        };
+
+        renderer::RenderBatchConfig renderBatchConfigs[1] = {
+            {
+                .batchIndex = 0,
+                .shaderProgramIndex = 1,
+                .vertexArrayIndex = 0,
+                .shaderLocationsIndex = 1,
+                .meshIndex = 0
+            }
+        };
+
+        renderer::Texture textures[1] = {
+            {
+                .path = "./textures/the_mega_texture.png",
+                .wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
+                .wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
+                .minFilter = renderer::Filter::NEAREST,
+                .magFilter = renderer::Filter::NEAREST
+            }
+        };
+
+        renderer::GraphicsConfig graphicsConfig = {
+            .meshes = meshes,
+            .textures = textures,
+            .renderEntityCounts = &entityCount,
+            .shaders = shaderList,
+            .cameraEye = &cameraEye,
+            .cameraFrustum = &cameraFrustum,
+            .cameraUniformBuffer = "CameraMatrices",
+            .cameraUniformNames = cameraUniformNames,
+            .shaderCompileSteps = shaderCompileSteps,
+            .shaderLocationsLinks = shaderLocationsLinks,
+            .renderBatchConfigs = renderBatchConfigs,
+            .meshCount = 1,
+            .bufferCount = 3,
+            .vertexArrayCount = 1,
+            .textureCount = 1,
+            .shaderCount = 4,
+            .shaderProgramCount = 2,
+            .locationsDescriptorCount = 2,
+            .renderBatchCount = 1,
+            .compileStepCount = 2,
+            .locationsLinkCount = 2,
+            .batchConfigCount = 1
+        };
+
+        renderer::Allocator renderAllocator;
+        renderer::allocateGraphicsResources(&renderAllocator, &graphicsConfig);
+        renderer::MutableGraphicsMemory mutableGraphicsMemory = renderer::readGraphicsMemory(&renderAllocator);
+        renderer::initializeGraphicsResources(mutableGraphicsMemory, &graphicsConfig);
+        renderer::initializeGraphicsState();
+
+        const IWindow::Size size = m_window->getSize();
+        renderer::setCameraAspectRatio(mutableGraphicsMemory, size.width, size.height);
+        m_window->setResizeCallback([&](int width, int height) -> void { renderer::setCameraAspectRatio(mutableGraphicsMemory, width, height); });
     }
 
     void EngineRuntime::executeGameLoop(const GameConfig& config, renderer::FrameBuffer* frameBuffer)
@@ -279,6 +442,11 @@ namespace ZeroX
         {
             m_rendererThread.join();
         }
+    }
+
+    const std::unique_ptr<IWindow>& EngineRuntime::getWindow() const
+    {
+        return m_window;
     }
 
     void EngineRuntime::executeRenderLoop(renderer::FrameBuffer* frameBuffer)
