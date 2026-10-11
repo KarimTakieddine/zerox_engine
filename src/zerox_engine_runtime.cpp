@@ -1,13 +1,9 @@
 #include <filesystem>
+#include <stdexcept>
 
 #include <glad/glad.h>
 #include <GL/glx.h>
 #include <GL/glext.h>
-
-#define GLFW_EXPOSE_NATIVE_X11
-#define GLFW_EXPOSE_NATIVE_GLX
-#include <GLFW/glfw3.h>
-#include <GLFW/glfw3native.h>
 
 #include <renderer.hpp>
 #include <shader.h>
@@ -16,6 +12,7 @@
 #include "render_command_generator.h"
 #include "zerox_engine_logger.h"
 #include "zerox_engine_runtime.h"
+#include "zerox_glfw_window.h"
 #include "zerox_miniaudio_player.h"
 #include "zerox_time.h"
 
@@ -40,27 +37,197 @@ namespace
 
         return platform::copyFile(gameLibraryPath.c_str(), destinationPath.c_str());
     }
-
-    void onWindowResize(GLFWwindow* window, int width, int height)
-    {
-        renderer::MutableGraphicsMemory* mutableGraphicsMemory = reinterpret_cast<renderer::MutableGraphicsMemory*>(glfwGetWindowUserPointer(window));
-
-        renderer::setCameraAspectRatio(*mutableGraphicsMemory, width, height);
-
-        glViewport(0, 0, width, height);
-    }
 }
 
 namespace ZeroX
 {
-    void EngineRuntime::startGameThread(const GameConfig& config, renderer::FrameBuffer* frameBuffer)
+    EngineRuntime::EngineRuntime(const WindowConfig& config)
     {
-        m_gameThread = std::thread(&EngineRuntime::executeGameLoop, this, config, frameBuffer);
+        if (!glfwInit())
+        {
+            const char* description{ nullptr };
+            int code = glfwGetError(&description);
+            throw std::runtime_error("Failed to intialize GLFW library. Error code: " + std::to_string(code) + " - " + std::string(description));
+        }
+
+        m_window = std::make_unique<GLFWWindow>(config);
     }
 
-    void EngineRuntime::startRenderThread(renderer::FrameBuffer* frameBuffer)
+    EngineRuntime::~EngineRuntime()
     {
-        m_rendererThread = std::thread(&EngineRuntime::executeRenderLoop, this, frameBuffer);
+        m_window.reset();
+
+        glfwTerminate();
+    }
+
+    void EngineRuntime::run(const GameConfig& gameConfig, const AudioConfig& audioConfig)
+    {
+        renderer::FrameBuffer renderFrameBuffer;
+        renderFrameBuffer.allocate(64);
+
+        m_window->setResizeCallback([&](int width, int height) -> void {
+            renderer::Frame frame;
+            renderer::Command setAspectRatioCommand{ .type = renderer::CommandType::SET_CAMERA_ASPECT_RATIO };
+            std::memcpy(setAspectRatioCommand.data, &width, sizeof(int));
+            std::memcpy(setAspectRatioCommand.data + sizeof(int), &height, sizeof(int));
+            frame.renderCommands.push_back(setAspectRatioCommand);
+            while (!renderFrameBuffer.push(frame))
+            {
+
+            }
+        });
+
+        m_window->unbindGraphicsContext();
+        m_rendererThread = std::thread(&EngineRuntime::render, this, &renderFrameBuffer);
+
+        m_gameLibraryWatcher    = std::make_unique<GameLibraryWatcher>();
+        m_gameLibrary           = std::make_unique<GameLibrary>();
+
+        BumpAllocator<16> gameAllocator;
+        gameAllocator.allocate(4096);
+
+        uint64_t libraryChangeCounter = 0;
+
+        if (!initializeGameLibrary(gameConfig))
+        {
+            LOG_WARN << "Failed to initialize game library";
+        }
+        else
+        {
+            LOG_INFO << "Successfully initialized game libary. Setting change count to: " << libraryChangeCounter;
+        }
+
+        if (!m_gameLibrary->getFunctions().initGame(&gameAllocator))
+        {
+            LOG_WARN << "Failed to initialize game library memory";
+        }
+        else
+        {
+            LOG_INFO << "Successfully initialized game library memory";
+        }
+
+        m_audioPlayer = std::make_unique<MiniAudioPlayer>();
+        if (!m_audioPlayer->initialize(audioConfig))
+            throw std::runtime_error("Failed to initialize audio player");
+
+        LOG_INFO << "Successfully initialized audio player";
+
+        uint64_t frameIndex{ 0 };
+
+        Time time;
+
+        while (!m_window->shouldClose())
+        {
+            m_window->processEvents();
+
+            // reload game library if necessary
+
+            const uint64_t watchCounter = m_gameLibraryWatcher->getChangeCounter();
+
+            if (libraryChangeCounter != watchCounter)
+            {
+                if (!reloadGameLibrary(gameConfig, watchCounter))
+                    LOG_WARN << "Failed to re-load game library file: " << gameConfig.gameLibraryFile;
+
+                LOG_INFO << "Successfully re-loaded game libary. Setting change count to: " << watchCounter;
+
+                libraryChangeCounter = watchCounter;
+            }
+
+            if (!m_gameLibrary->isLoaded() || !m_gameLibrary->isValid())
+            {
+                continue;
+            }
+
+            // update input
+
+            // TODO
+
+            // wait for render thread
+
+            const uint64_t renderFrameIndex = m_renderFrameIndex.load(std::memory_order_acquire);
+
+            const uint64_t maxQueuedFrames = gameConfig.maxQueuedFrames;
+            if (frameIndex >= maxQueuedFrames)
+            {
+                int64_t difference = frameIndex - renderFrameIndex;
+
+                if (difference >= maxQueuedFrames)
+                {
+                    m_renderFrameIndex.wait(renderFrameIndex);
+                }
+            }
+
+            // Sample delta time
+
+            const double frameDeltaTime = m_frameDeltaTime.load(std::memory_order_acquire);
+            const double alpha          = 2.0 / 61;
+            time.smoothDeltaTime        = ( frameDeltaTime * alpha ) + ( time.smoothDeltaTime * (1.0 - alpha) );
+
+            // update game
+
+            m_gameLibrary->getFunctions().updateGame(&gameAllocator, frameDeltaTime);
+
+            // Submit render commands
+
+            ZeroXGame::GameMemory gameMemory = ZeroXGame::readGameMemory(&gameAllocator);
+
+            renderer::Frame frame;
+
+            const auto players = gameMemory.players;
+
+            const size_t spriteIndex    = 0;
+            size_t spriteBatchIndex     = 0;
+
+            for (size_t i = 0; i < players.size(); ++i)
+            {
+                ZeroXGame::GameEntity* playerEntity = players.data() + i;
+
+                const size_t entityIndex = spriteBatchIndex + i;
+
+                frame.renderCommands.push_back(generateRenderCommand(playerEntity->transform, spriteIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(playerEntity->material, spriteIndex, entityIndex));
+            }
+
+            spriteBatchIndex += players.size();
+
+            const auto enemies = gameMemory.enemies;
+
+            for (size_t i = 0; i < enemies.size(); ++i)
+            {
+                ZeroXGame::GameEntity* enemyEntity = enemies.data() + i;
+
+                const size_t entityIndex = spriteBatchIndex + i;
+
+                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->transform, spriteIndex, entityIndex));
+                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->material, spriteIndex, entityIndex));
+            }
+
+            spriteBatchIndex += enemies.size();
+
+            while(!m_window->shouldClose() && !renderFrameBuffer.push(frame))
+            {
+                
+            }
+
+            globalEngineLogger->processMessages();
+
+            ++frameIndex;
+        }
+
+        m_gameLibraryWatcher->stopWatching();
+
+        stopRendering();
+    }
+
+    void EngineRuntime::stopRendering()
+    {
+        m_runRenderer.store(false, std::memory_order_release);
+
+        if (m_rendererThread.joinable())
+        {
+            m_rendererThread.join();
+        }
     }
 
     bool EngineRuntime::startWatchingGameLibrary(const GameConfig& config)
@@ -116,173 +283,16 @@ namespace ZeroX
         return m_gameLibrary->load(destinationPath.c_str());
     }
 
-    void EngineRuntime::executeGameLoop(const GameConfig& config, renderer::FrameBuffer* frameBuffer)
+    void EngineRuntime::render(renderer::FrameBuffer* frameBuffer)
     {
-        m_audioPlayer           = std::make_unique<MiniAudioPlayer>();
-        m_gameLibraryWatcher    = std::make_unique<GameLibraryWatcher>();
-        m_gameLibrary           = std::make_unique<GameLibrary>();
+        m_window->bindGraphicsContext();
 
-        AudioSound audioSounds[1] = {
-            { "./audio/character_jump.mp3", SoundType::SOUND_EFFECT }
-        };
-
-        AudioConfig audioConfig = {
-            .sounds     = audioSounds,
-            .soundCount = 1
-        };
-
-        if (!m_audioPlayer->initialize(audioConfig))
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
         {
-            LOG_ERROR << "Failed to initialize audio player";
+            LOG_ERROR << "Failed to initialize rendering logic. GLAD GL function loading failed";
             return;
         }
 
-        m_audioPlayer->playSound("character_jump.mp3");
-
-        assert(m_gameLibraryWatcher);
-        assert(m_gameLibrary);
-
-        if (!initializeGameLibrary(config))
-        {
-            LOG_ERROR << "Failed to initialize game library";
-            return;
-        }
-
-        LOG_INFO << "Successfully initialized game library";
-
-        uint64_t fileChangeCounter = 0;
-
-        BumpAllocator<16> gameAllocator;
-        gameAllocator.allocate(4096);
-        if (!m_gameLibrary->getFunctions().initGame(&gameAllocator))
-        {
-            LOG_ERROR << "Failed to initialize game library memory";
-            return;
-        }
-
-        LOG_INFO << "Successfully initialized game library memory";
-
-        m_gameFrameIndex.store(0, std::memory_order_relaxed);
-
-        while (m_runGame.load(std::memory_order_acquire))
-        {
-            const uint64_t watchCounter = m_gameLibraryWatcher->getChangeCounter();
-
-            if (fileChangeCounter != watchCounter)
-            {
-                if (!reloadGameLibrary(config, watchCounter))
-                {
-                    LOG_ERROR << "Failed to reload game library. Change count is: " << fileChangeCounter;
-                    continue;
-                }
-
-                LOG_INFO << "Successfully re-loaded game libary. Setting change count to: " << watchCounter;
-
-                fileChangeCounter = watchCounter;
-            }
-
-            if (!m_gameLibrary->isLoaded() || !m_gameLibrary->isValid())
-            {
-                LOG_INFO << "No loaded or valid game library was found";
-                continue;
-            }
-
-            Time time{
-                .deltaTimeSeconds   = m_frameDeltaTime.load(std::memory_order_acquire),
-                .renderFrameIndex   = m_renderFrameIndex.load(std::memory_order_acquire),
-                .gameFrameIndex     = m_gameFrameIndex.load(std::memory_order_relaxed)
-            };
-
-            // Wait for frame N - maxQueuedFrames
-
-            const uint64_t maxQueuedFrames = config.maxQueuedFrames;
-            if (time.gameFrameIndex >= maxQueuedFrames)
-            {
-                uint64_t difference = time.gameFrameIndex - time.renderFrameIndex;
-
-                if (difference >= maxQueuedFrames)
-                {
-                    m_renderFrameIndex.wait(time.renderFrameIndex);
-                }
-            }
-
-            const double alpha      = 2.0 / 30;
-            time.smoothDeltaTime    = ( time.smoothDeltaTime * alpha ) + ( time.deltaTimeSeconds * (1.0 - alpha) );
-
-            m_gameLibrary->getFunctions().updateGame(&gameAllocator, time.smoothDeltaTime);
-
-            ZeroXGame::GameMemory gameMemory = ZeroXGame::readGameMemory(&gameAllocator);
-
-            renderer::Frame frame;
-
-            const auto players = gameMemory.players;
-
-            const size_t spriteIndex    = 0;
-            size_t spriteBatchIndex     = 0;
-
-            for (size_t i = 0; i < players.size(); ++i)
-            {
-                ZeroXGame::GameEntity* playerEntity = players.data() + i;
-
-                const size_t entityIndex = spriteBatchIndex + i;
-
-                frame.renderCommands.push_back(generateRenderCommand(playerEntity->transform, spriteIndex, entityIndex));
-                frame.renderCommands.push_back(generateRenderCommand(playerEntity->material, spriteIndex, entityIndex));
-            }
-
-            spriteBatchIndex += players.size();
-
-            const auto enemies = gameMemory.enemies;
-
-            for (size_t i = 0; i < enemies.size(); ++i)
-            {
-                ZeroXGame::GameEntity* enemyEntity = enemies.data() + i;
-
-                const size_t entityIndex = spriteBatchIndex + i;
-
-                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->transform, spriteIndex, entityIndex));
-                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->material, spriteIndex, entityIndex));
-            }
-
-            spriteBatchIndex += enemies.size();
-
-            while(m_runGame.load(std::memory_order_acquire) && !frameBuffer->push(frame))
-            {
-                
-            }
-
-            m_gameFrameIndex.fetch_add(1, std::memory_order_relaxed);
-
-            assert(ZeroX::globalEngineLogger);
-            ZeroX::globalEngineLogger->processMessages();
-        }
-
-        m_gameLibraryWatcher->stopWatching();
-    }
-
-    void EngineRuntime::stopGameThread()
-    {
-        m_runGame.store(false, std::memory_order_release);
-
-        m_renderFrameIndex.store(0, std::memory_order_release);
-        m_renderFrameIndex.notify_one();
-
-        if (m_gameThread.joinable())
-        {
-            m_gameThread.join();
-        }
-    }
-
-    void EngineRuntime::waitForWindowClose()
-    {
-        if (m_rendererThread.joinable())
-        {
-            m_rendererThread.join();
-        }
-    }
-
-    void EngineRuntime::executeRenderLoop(renderer::FrameBuffer* frameBuffer)
-    {
         renderer::Vertex quadVertices[4] = {
             { { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } },
             { { -0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
@@ -381,115 +391,50 @@ namespace ZeroX
             .batchConfigCount = 1
         };
 
-        if (glfwInit() != GLFW_TRUE)
-        {
-            return;
-        }
-
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
-
-        GLFWwindow* window = glfwCreateWindow(1920, 1080, "Minimal Renderer", nullptr, nullptr);
-        if (!window)
-        {
-            glfwTerminate();
-
-            return;
-        }
-
-        glfwMakeContextCurrent(window);
-
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-        {
-            glfwDestroyWindow(window);
-            glfwTerminate();
-
-            return;
-        }
-
         renderer::Allocator renderAllocator;
         renderer::allocateGraphicsResources(&renderAllocator, &graphicsConfig);
         renderer::MutableGraphicsMemory mutableGraphicsMemory = renderer::readGraphicsMemory(&renderAllocator);
         renderer::initializeGraphicsResources(mutableGraphicsMemory, &graphicsConfig);
         renderer::initializeGraphicsState();
 
-        glfwSetWindowUserPointer(window, &mutableGraphicsMemory);
+        const IWindow::Size size = m_window->getSize();
+        renderer::setCameraAspectRatio(mutableGraphicsMemory, size.width, size.height);
 
-        int windowWidth{ 0 };
-        int windowHeight{ 0 };
-        glfwGetWindowSize(window, &windowWidth, &windowHeight);
-        ::onWindowResize(window, windowWidth, windowHeight);
-        glfwSetWindowSizeCallback(window, ::onWindowResize);
-        glfwShowWindow(window);
+        uint64_t frameIndex{ 0 };
+        auto startTimePoint = std::chrono::steady_clock::now();
 
-        uint64_t renderFrameIndex       = 0;
-        int64_t lastPresentationTime    = 0;
-        auto startTimePoint             = std::chrono::high_resolution_clock::now();
-
-        while (!glfwWindowShouldClose(window))
+        while (m_runRenderer.load(std::memory_order_acquire))
         {
-            if (!m_runRenderer.load(std::memory_order_acquire))
-            {
-                glfwSetWindowShouldClose(window, GLFW_TRUE);
-                continue;
-            }
-
-            glfwPollEvents();
-
             renderer::Frame renderFrame;
             if (frameBuffer->pop(renderFrame))
             {
                 renderer::processFrame(mutableGraphicsMemory, &renderFrame);
             }
 
+            const IWindow::Size clientSize = m_window->getSize();
+
             const glm::vec2 worldDimensions = renderer::getViewportWorldDimensions(
                 mutableGraphicsMemory.camera.data(),
                 mutableGraphicsMemory.cameraEye.data(),
                 mutableGraphicsMemory.cameraFrustum.data());
 
-            int clientWidth{ 0 };
-            int clientHeight{ 0 };
-
-            glfwGetWindowSize(window, &clientWidth, &clientHeight);
-
             renderer::clearFrameBuffer();
-            renderer::render(mutableGraphicsMemory, renderer::getPixelsPerUnit(clientWidth, clientHeight, worldDimensions));
+            renderer::render(mutableGraphicsMemory, renderer::getPixelsPerUnit(clientSize.width, clientSize.height, worldDimensions));
+            m_window->swapBuffers();
 
-            glfwSwapBuffers(window);
+            auto currentTimePoint       = std::chrono::steady_clock::now();
+            int64_t microSecondsElapsed = std::chrono::duration_cast<std::chrono::microseconds>(currentTimePoint - startTimePoint).count();
 
-            PFNGLXGETSYNCVALUESOMLPROC glXGetSyncValuesOML =
-                (PFNGLXGETSYNCVALUESOMLPROC)glXGetProcAddressARB((const GLubyte *)"glXGetSyncValuesOML");
+            m_frameDeltaTime.store(microSecondsElapsed * 0.000001, std::memory_order_release);
+            
+            startTimePoint = currentTimePoint;
 
-            int64_t systemTime          { 0 };
-            int64_t streamCounter       { 0 };
-            int64_t swapBufferCounter   { 0 };
-
-            if (glXGetSyncValuesOML != nullptr && glXGetSyncValuesOML(nullptr, glfwGetGLXWindow(window), &systemTime, &streamCounter, &swapBufferCounter))
-            {
-                
-            }
-            else
-            {
-                auto timePoint = std::chrono::high_resolution_clock::now();
-
-                systemTime = std::chrono::duration_cast<std::chrono::microseconds>(timePoint - startTimePoint).count();
-            }
-
-            m_frameDeltaTime.store(static_cast<double>(systemTime - lastPresentationTime) * 0.000001);
-
-            m_renderFrameIndex.store(renderFrameIndex, std::memory_order_release);
+            m_renderFrameIndex.store(frameIndex, std::memory_order_release);
             m_renderFrameIndex.notify_one();
 
-            lastPresentationTime = systemTime;
-
-            ++renderFrameIndex;
+            ++frameIndex;
         }
 
         renderer::freeGraphicsResources(mutableGraphicsMemory);
-        
-        glfwDestroyWindow(window);
-        glfwTerminate();
     }
 }
