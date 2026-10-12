@@ -4,7 +4,7 @@ namespace ZeroX
 {
     GameLibrary::~GameLibrary()
     {
-        platform::closeLibrary(m_handle);
+        unload();
     }
 
     bool GameLibrary::load(const char* path)
@@ -20,6 +20,11 @@ namespace ZeroX
         m_functions.updateGame  = (GameLibraryFunctions::GameUpdateFunc)platform::loadLibraryFunction(m_handle, "updateGame");
 
         return true;
+    }
+
+    void GameLibrary::unload() const
+    {
+        platform::closeLibrary(m_handle);
     }
 
     bool GameLibrary::isLoaded() const

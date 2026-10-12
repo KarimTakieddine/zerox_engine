@@ -256,8 +256,9 @@ namespace ZeroX
             return false;
         }
 
-        std::filesystem::path gameLibraryPath(config.gameLibraryDir);
-        gameLibraryPath /= config.gameLibraryFile;
+        const std::filesystem::path gameLibraryDirPath(config.gameLibraryDir);
+
+        const std::filesystem::path gameLibraryPath = gameLibraryDirPath / config.gameLibraryFile;
 
         if (!std::filesystem::exists(gameLibraryPath))
         {
@@ -265,7 +266,10 @@ namespace ZeroX
             return false;
         }
 
-        return m_gameLibrary->load(gameLibraryPath.string().c_str());
+        const std::filesystem::path copyPath = gameLibraryDirPath / ( std::string(config.gameLibraryFile) + '_' + std::to_string(0));
+        platform::copyFile(gameLibraryPath.string().c_str(), copyPath.string().c_str());
+
+        return m_gameLibrary->load(copyPath.string().c_str());
     }
 
     bool EngineRuntime::reloadGameLibrary(const GameConfig& config, uint64_t changeCounter)

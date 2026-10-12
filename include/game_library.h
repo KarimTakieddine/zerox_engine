@@ -33,6 +33,7 @@ namespace ZeroX
         ~GameLibrary();
 
         bool load(const char* path);
+        void unload() const;
 
         bool isLoaded() const;
         bool isValid() const;
