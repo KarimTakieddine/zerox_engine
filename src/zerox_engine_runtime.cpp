@@ -94,15 +94,15 @@ namespace ZeroX
         else
         {
             LOG_INFO << "Successfully initialized game libary. Setting change count to: " << libraryChangeCounter;
-        }
 
-        if (!m_gameLibrary->getFunctions().initGame(&gameAllocator))
-        {
-            LOG_WARN << "Failed to initialize game library memory";
-        }
-        else
-        {
-            LOG_INFO << "Successfully initialized game library memory";
+            if (!m_gameLibrary->getFunctions().initGame(&gameAllocator))
+            {
+                LOG_WARN << "Failed to initialize game library memory";
+            }
+            else
+            {
+                LOG_INFO << "Successfully initialized game library memory";
+            }
         }
 
         m_audioPlayer = std::make_unique<MiniAudioPlayer>();
@@ -141,6 +141,7 @@ namespace ZeroX
 
             if (!m_gameLibrary->isLoaded() || !m_gameLibrary->isValid())
             {
+                globalEngineLogger->processMessages();
                 continue;
             }
 

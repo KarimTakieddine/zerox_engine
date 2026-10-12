@@ -11,6 +11,8 @@
 #include <string>
 #include <thread>
 
+#include <platform.h>
+
 namespace ZeroX
 {
     inline std::string getFileBasename(const char* file)
@@ -33,13 +35,6 @@ namespace ZeroX
         }
 
         return path.substr(pos + 1, path.size() - 1 - pos);
-    }
-
-    inline std::string getCurrentTime()
-    {
-        std::chrono::time_point now = std::chrono::high_resolution_clock::now();
-
-        return "";
     }
 
     enum class LogLevel : uint8_t
@@ -99,7 +94,7 @@ namespace ZeroX
     public:
         LogMessageBuilder(LogLevel level, const char* file, uint64_t line)
         {
-            m_stream << getCurrentTime() << " - ";
+            m_stream << platform::getFormattedDateTime() << " - ";
             m_stream << level << "[" << getFileBasename(file) << ':' << line << "] ";
         }
 
