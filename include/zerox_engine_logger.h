@@ -39,28 +39,28 @@ namespace ZeroX
     {
         std::chrono::time_point now = std::chrono::high_resolution_clock::now();
 
-        return std::format("{0:%F}T{0:%H}:{0:%M}:{0:%OS}:{0:%z}", now);
+        return "";
     }
 
     enum class LogLevel : uint8_t
     {
-        UNKNOWN = 0,
-        WARNING = 1,
-        ERROR   = 2,
-        INFO    = 3
+        LEVEL_UNKNOWN   = 0,
+        LEVEL_INFO      = 1,
+        LEVEL_ERROR     = 2,
+        LEVEL_WARNING   = 3
     };
 
     inline std::stringstream& operator<<(std::stringstream& stream, LogLevel logLevel)
     {
         switch (logLevel)
         {
-        case LogLevel::INFO:
+        case LogLevel::LEVEL_INFO:
             stream << "INFO";
             break;
-        case LogLevel::WARNING:
+        case LogLevel::LEVEL_WARNING:
             stream << "WARN";
             break;
-        case LogLevel::ERROR:
+        case LogLevel::LEVEL_ERROR:
             stream << "ERRO";
             break;
         default:
@@ -121,6 +121,6 @@ namespace ZeroX
     };
 }
 
-#define LOG_INFO assert(ZeroX::globalEngineLogger); ZeroX::LogMessageBuilder(ZeroX::LogLevel::INFO, __FILE__, __LINE__)
-#define LOG_ERROR assert(ZeroX::globalEngineLogger); ZeroX::LogMessageBuilder(ZeroX::LogLevel::ERROR, __FILE__, __LINE__)
-#define LOG_WARN assert(ZeroX::globalEngineLogger); ZeroX::LogMessageBuilder(ZeroX::LogLevel::WARNING, __FILE__, __LINE__)
+#define LOG_INFO assert(ZeroX::globalEngineLogger); ZeroX::LogMessageBuilder(ZeroX::LogLevel::LEVEL_INFO, __FILE__, __LINE__)
+#define LOG_ERROR assert(ZeroX::globalEngineLogger); ZeroX::LogMessageBuilder(ZeroX::LogLevel::LEVEL_ERROR, __FILE__, __LINE__)
+#define LOG_WARN assert(ZeroX::globalEngineLogger); ZeroX::LogMessageBuilder(ZeroX::LogLevel::LEVEL_WARNING, __FILE__, __LINE__)

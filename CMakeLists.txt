@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 4.3.3 FATAL_ERROR)
+cmake_minimum_required(VERSION 4.3.1 FATAL_ERROR)
 
 set(CMAKE_CXX_STANDARD 20 REQUIRED)
 
@@ -36,7 +36,11 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 add_custom_target(Assets ALL)
 
-find_package(glfw3 3.4 REQUIRED)
+if (WIN32)
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/glfw")
+elseif (LINUX)
+    find_package(glfw3 3.4 REQUIRED)
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${INCLUDE_DIR}

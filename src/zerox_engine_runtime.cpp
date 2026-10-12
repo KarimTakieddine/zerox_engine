@@ -2,8 +2,6 @@
 #include <stdexcept>
 
 #include <glad/glad.h>
-#include <GL/glx.h>
-#include <GL/glext.h>
 
 #include <renderer.hpp>
 #include <shader.h>
@@ -36,7 +34,7 @@ namespace
 
         destinationPath = gameDirectoryPath / filename;
 
-        return platform::copyFile(gameLibraryPath.c_str(), destinationPath.c_str());
+        return platform::copyFile(gameLibraryPath.string().c_str(), destinationPath.string().c_str());
     }
 }
 
@@ -246,7 +244,7 @@ namespace ZeroX
             return false;
         }
 
-        return m_gameLibraryWatcher->startWatching(gameDirectoryPath.c_str(), config.gameLibraryFile);
+        return m_gameLibraryWatcher->startWatching(gameDirectoryPath.string().c_str(), config.gameLibraryFile);
     }
 
     bool EngineRuntime::initializeGameLibrary(const GameConfig& config)
@@ -262,11 +260,11 @@ namespace ZeroX
 
         if (!std::filesystem::exists(gameLibraryPath))
         {
-            LOG_ERROR << "Failed to initialize game library: Is not a file: " << gameLibraryPath.c_str();
+            LOG_ERROR << "Failed to initialize game library: Is not a file: " << gameLibraryPath.string().c_str();
             return false;
         }
 
-        return m_gameLibrary->load(gameLibraryPath.c_str());
+        return m_gameLibrary->load(gameLibraryPath.string().c_str());
     }
 
     bool EngineRuntime::reloadGameLibrary(const GameConfig& config, uint64_t changeCounter)
@@ -274,7 +272,7 @@ namespace ZeroX
         const std::filesystem::path gameDirectoryPath(config.gameLibraryDir);
         const std::filesystem::path gameLibraryPath = gameDirectoryPath / config.gameLibraryFile;
  
-        if (platform::getFileSize(gameLibraryPath.c_str()) == 0)
+        if (platform::getFileSize(gameLibraryPath.string().c_str()) == 0)
         {
             LOG_ERROR << "Failed to reload game library: File size is 0";
             return false;
@@ -283,11 +281,11 @@ namespace ZeroX
         std::filesystem::path destinationPath;
         if (!::copyGameLibrary(gameDirectoryPath, gameLibraryPath, destinationPath, changeCounter))
         {
-            LOG_ERROR << "Failed to reload game library: Failed to copy file from " << gameLibraryPath.c_str() << " to " << destinationPath.c_str();
+            LOG_ERROR << "Failed to reload game library: Failed to copy file from " << gameLibraryPath.string().c_str() << " to " << destinationPath.string().c_str();
             return false;
         }
 
-        return m_gameLibrary->load(destinationPath.c_str());
+        return m_gameLibrary->load(destinationPath.string().c_str());
     }
 
     void EngineRuntime::render(renderer::FrameBuffer* frameBuffer)
@@ -325,10 +323,10 @@ namespace ZeroX
         };
 
         renderer::Frustum cameraFrustum = {
-            .fov    = 80.0f,
-            .aspect = 1920.0f / 1080.0f,
-            .near   = 1.0f,
-            .far    = 100.0f
+            .fov        = 80.0f,
+            .aspect     = 1920.0f / 1080.0f,
+            .nearPlane  = 1.0f,
+            .farPlane   = 100.0f
         };
 
         const char* cameraUniformNames[4] = {
