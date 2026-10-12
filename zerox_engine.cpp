@@ -33,10 +33,18 @@ int main(int argc, char** argv)
 
         std::unique_ptr<ZeroX::EngineRuntime> engineRuntime = std::make_unique<ZeroX::EngineRuntime>(windowConfig);
 
+        // TODO(Karim): Refactor these to XML configs!
+
+#ifdef _WIN32
+        ZeroX::GameConfig gameConfig = {
+            .gameLibraryDir     = "D:\\Repositories\\zerox_game\\out\\build\\x64-Debug",
+            .gameLibraryFile    = "zerox_game.dll",
+#elif __linux__
         ZeroX::GameConfig gameConfig = {
             .gameLibraryDir     = "/home/mouns/Repositories/zerox_game/build",
             .gameLibraryFile    = "libzerox_game.so",
-            .maxQueuedFrames    = 4
+#endif
+            .maxQueuedFrames = 4
         };
 
         ZeroX::AudioSound audioSounds[1] = {
