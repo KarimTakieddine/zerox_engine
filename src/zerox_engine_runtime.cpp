@@ -130,9 +130,13 @@ namespace ZeroX
             if (libraryChangeCounter != watchCounter)
             {
                 if (!reloadGameLibrary(gameConfig, watchCounter))
+                {
                     LOG_WARN << "Failed to re-load game library file: " << gameConfig.gameLibraryFile;
-
-                LOG_INFO << "Successfully re-loaded game libary. Setting change count to: " << watchCounter;
+                }
+                else
+                {
+                    LOG_INFO << "Successfully re-loaded game libary. Setting change count to: " << watchCounter;
+                }
 
                 libraryChangeCounter = watchCounter;
             }

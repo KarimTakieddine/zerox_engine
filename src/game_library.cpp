@@ -2,24 +2,29 @@
 
 namespace ZeroX
 {
+    GameLibrary::~GameLibrary()
+    {
+        platform::closeLibrary(m_handle);
+    }
+
     bool GameLibrary::load(const char* path)
     {
-        m_libraryHandle = platform::openLibrary(path);
+        m_handle = platform::openLibrary(path);
 
-        if (!m_libraryHandle || !m_libraryHandle->getHandle())
+        if (!m_handle)
         {
             return false;
         }
 
-        m_functions.initGame    = (GameLibraryFunctions::GameInitFunc)platform::loadLibraryFunction(m_libraryHandle.get(), "initializeGame");
-        m_functions.updateGame  = (GameLibraryFunctions::GameUpdateFunc)platform::loadLibraryFunction(m_libraryHandle.get(), "updateGame");
+        m_functions.initGame    = (GameLibraryFunctions::GameInitFunc)platform::loadLibraryFunction(m_handle, "initializeGame");
+        m_functions.updateGame  = (GameLibraryFunctions::GameUpdateFunc)platform::loadLibraryFunction(m_handle, "updateGame");
 
         return true;
     }
 
     bool GameLibrary::isLoaded() const
     {
-        return m_libraryHandle && m_libraryHandle->getHandle();
+        return m_handle;
     }
 
     bool GameLibrary::isValid() const

@@ -30,6 +30,8 @@ namespace ZeroX
     class GameLibrary
     {
     public:
+        ~GameLibrary();
+
         bool load(const char* path);
 
         bool isLoaded() const;
@@ -39,6 +41,6 @@ namespace ZeroX
 
     private:
         GameLibraryFunctions m_functions;
-        std::unique_ptr<platform::LibraryHandle> m_libraryHandle{ nullptr };
+        platform::LibraryHandle m_handle{ nullptr };
     };
 }
