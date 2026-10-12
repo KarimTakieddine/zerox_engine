@@ -10,6 +10,7 @@
 #include <texture.h>
 
 #include "render_command_generator.h"
+#include "zerox_engine_input.h"
 #include "zerox_engine_logger.h"
 #include "zerox_engine_runtime.h"
 #include "zerox_glfw_window.h"
@@ -115,6 +116,8 @@ namespace ZeroX
         uint64_t frameIndex{ 0 };
 
         Time time;
+
+        monitorJoystickConnections();
 
         while (!m_window->shouldClose())
         {

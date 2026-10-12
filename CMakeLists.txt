@@ -28,6 +28,7 @@ list(APPEND SOURCES
     ${SRC_DIR}/zerox_engine_logger.cpp
     ${SRC_DIR}/zerox_engine_runtime.cpp
     ${SRC_DIR}/zerox_glfw_window.cpp
+    ${SRC_DIR}/zerox_engine_input_glfw.cpp
     ${MINIAUDIO_DIR}/miniaudio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
 
