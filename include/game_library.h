@@ -5,10 +5,12 @@
 #include <bump_allocator.hpp>
 #include <platform.h>
 
+#include "zerox_render_descriptor.h"
+
 #if defined(_WIN32) || defined(_WIN64)
-    #define CDECL __cdecl
+    #define ZEROX_CDECL __cdecl
 #else
-    #define CDECL
+    #define ZEROX_CDECL
 #endif
 
 namespace ZeroX
@@ -20,11 +22,13 @@ namespace ZeroX
     struct GameLibraryFunctions
     {
     public:
-        typedef bool(CDECL* GameInitFunc)(GameAllocator*);
-        typedef bool(CDECL* GameUpdateFunc)(GameAllocator*, double);
+        typedef bool(ZEROX_CDECL* GameInitFunc)(GameAllocator*);
+        typedef bool(ZEROX_CDECL* GameUpdateFunc)(GameAllocator*, double);
+        typedef RenderDescriptor(ZEROX_CDECL* RenderDescriptorFunc)(const GameAllocator*);
 
-        GameInitFunc initGame       { nullptr };
-        GameUpdateFunc updateGame   { nullptr };
+        GameInitFunc initGame                       { nullptr };
+        GameUpdateFunc updateGame                   { nullptr };
+        RenderDescriptorFunc initRenderDescriptor   { nullptr };
     };
 
     class GameLibrary

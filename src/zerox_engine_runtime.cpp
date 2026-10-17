@@ -36,6 +36,48 @@ namespace
 
         return platform::copyFile(gameLibraryPath.string().c_str(), destinationPath.string().c_str());
     }
+
+    renderer::Frame buildRenderFrame(const BumpAllocator<16>* gameAllocator, const ZeroX::RenderDescriptor& descriptor)
+    {
+        const std::byte* gameMemory = static_cast<const std::byte*>(gameAllocator->peek());
+
+        renderer::Frame result;
+
+        const auto* entitySectionData = descriptor.entitySectionData;
+        MemoryCursor<16> cursor;
+
+        for (uint64_t i = 0; i < descriptor.sectionCount; ++i)
+        {
+            const auto* entitySection = reinterpret_cast<const ZeroX::EntitySection*>(entitySectionData + cursor.getOffset());
+
+            cursor.step<ZeroX::EntitySection>();
+            
+            const uint64_t descriptorCount = entitySection->descriptorCount;
+
+            for (uint64_t j = 0; j < descriptorCount; ++j)
+            {
+                const auto* fetchDescriptor = entitySection->fetchDescriptors + j;
+
+                const renderer::RenderEntity* renderEntity = reinterpret_cast<const renderer::RenderEntity*>(gameMemory + fetchDescriptor->offset + fetchDescriptor->stride);
+
+                switch (entitySection->type)
+                {
+                case ZeroX::EntitySectionType::SPRITE:
+                {
+                    result.renderCommands.push_back(ZeroX::generateRenderCommand(renderEntity->transform, 0, j));
+                    result.renderCommands.push_back(ZeroX::generateRenderCommand(renderEntity->material, 0, j));
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+
+            cursor.step_array<ZeroX::EntityFetchDescriptor>(descriptorCount);
+        }
+
+        return result;
+    }
 }
 
 namespace ZeroX
@@ -142,6 +184,7 @@ namespace ZeroX
                 libraryChangeCounter = watchCounter;
             }
 
+            // TODO(Karim): Maybe worth attempting a library ::unload() here?
             if (!m_gameLibrary->isLoaded() || !m_gameLibrary->isValid())
             {
                 globalEngineLogger->processMessages();
@@ -179,45 +222,15 @@ namespace ZeroX
 
             // Submit render commands
 
-            ZeroXGame::GameMemory gameMemory = ZeroXGame::readGameMemory(&gameAllocator);
+            const RenderDescriptor renderDescriptor = m_gameLibrary->getFunctions().initRenderDescriptor(&gameAllocator);
+            const renderer::Frame renderFrame       = ::buildRenderFrame(&gameAllocator, renderDescriptor);
 
-            renderer::Frame frame;
-
-            const auto players = gameMemory.players;
-
-            const size_t spriteIndex    = 0;
-            size_t spriteBatchIndex     = 0;
-
-            for (size_t i = 0; i < players.size(); ++i)
+            while (!m_window->shouldClose() && !renderFrameBuffer.push(renderFrame))
             {
-                ZeroXGame::GameEntity* playerEntity = players.data() + i;
 
-                const size_t entityIndex = spriteBatchIndex + i;
-
-                frame.renderCommands.push_back(generateRenderCommand(playerEntity->transform, spriteIndex, entityIndex));
-                frame.renderCommands.push_back(generateRenderCommand(playerEntity->material, spriteIndex, entityIndex));
             }
 
-            spriteBatchIndex += players.size();
-
-            const auto enemies = gameMemory.enemies;
-
-            for (size_t i = 0; i < enemies.size(); ++i)
-            {
-                ZeroXGame::GameEntity* enemyEntity = enemies.data() + i;
-
-                const size_t entityIndex = spriteBatchIndex + i;
-
-                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->transform, spriteIndex, entityIndex));
-                frame.renderCommands.push_back(generateRenderCommand(enemyEntity->material, spriteIndex, entityIndex));
-            }
-
-            spriteBatchIndex += enemies.size();
-
-            while(!m_window->shouldClose() && !renderFrameBuffer.push(frame))
-            {
-                
-            }
+            // Flush any pending log messages
 
             globalEngineLogger->processMessages();
 

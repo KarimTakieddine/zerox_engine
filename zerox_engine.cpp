@@ -27,7 +27,7 @@ int main(int argc, char** argv)
             .height             = 1080,
             .openGLVersionMajor = 4,
             .openGLVersionMinor = 6,
-            .fullscreen         = false,
+            .fullscreen         = false, // TODO(Karim): This needs fixing!
             .resizeable         = true
         };
 

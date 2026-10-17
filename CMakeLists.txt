@@ -13,7 +13,6 @@ set(BINARY_DIR bin)
 set(PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_platform")
 set(RENDERER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_renderer")
 set(MEMORY_READER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/memory_reader")
-set(GAME_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../zerox_game")
 
 Project(${PROJECT_NAME})
 
@@ -45,7 +44,6 @@ endif()
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${INCLUDE_DIR}
     ${MINIAUDIO_DIR}
-    ${GAME_DIR}/include
     ${PLATFORM_DIR}/include
     ${RENDERER_DIR}/include
     "${RENDERER_DIR}/zerox_engine_glad/include"
