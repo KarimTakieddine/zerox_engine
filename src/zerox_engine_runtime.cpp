@@ -1,7 +1,7 @@
 #include <filesystem>
 #include <stdexcept>
 
-#include <glad/glad.h>
+#include <glad/gl.h>
 
 #include <renderer.hpp>
 #include <shader.h>
@@ -107,6 +107,8 @@ namespace ZeroX
         renderFrameBuffer.allocate(64);
 
         m_window->setResizeCallback([&](int width, int height) -> void {
+            if (width <= 0 || height <= 0) { return; }
+
             renderer::Frame frame;
             renderer::Command setAspectRatioCommand{ .type = renderer::CommandType::SET_CAMERA_ASPECT_RATIO };
             std::memcpy(setAspectRatioCommand.data, &width, sizeof(int));
@@ -313,11 +315,17 @@ namespace ZeroX
     {
         m_window->bindGraphicsContext();
 
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+        int openGLVersion = gladLoadGL(glfwGetProcAddress);
+        if (openGLVersion == 0)
         {
-            LOG_ERROR << "Failed to initialize rendering logic. GLAD GL function loading failed";
+            LOG_ERROR << "Failed to initialize rendering logic. Glad 2 GL function loading failed";
             return;
         }
+
+        LOG_INFO
+            << "Loaded OpenGL version: "
+            << GLAD_VERSION_MAJOR(openGLVersion) << "."
+            << GLAD_VERSION_MINOR(openGLVersion);
 
         renderer::Vertex quadVertices[4] = {
             { { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } },
