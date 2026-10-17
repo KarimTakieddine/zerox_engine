@@ -37,22 +37,57 @@ namespace
         return platform::copyFile(gameLibraryPath.string().c_str(), destinationPath.string().c_str());
     }
 
-    renderer::Frame buildRenderFrame(const BumpAllocator<16>* gameAllocator, const ZeroX::RenderDescriptor& descriptor)
+    renderer::Frame buildRenderFrame(BumpAllocator<16>* gameAllocator, const ZeroX::RenderDescriptor& descriptor)
     {
-        const std::byte* gameMemory = static_cast<const std::byte*>(gameAllocator->peek());
+        std::byte* gameMemory = static_cast<std::byte*>(gameAllocator->peek());
 
         renderer::Frame result;
 
-        const auto* entitySectionData = descriptor.entitySectionData;
+        auto* entitySectionData = descriptor.entitySectionData;
         MemoryCursor<16> cursor;
 
         for (uint64_t i = 0; i < descriptor.sectionCount; ++i)
         {
-            const auto* entitySection = reinterpret_cast<const ZeroX::EntitySection*>(entitySectionData + cursor.getOffset());
+            auto* entitySection = reinterpret_cast<ZeroX::EntitySection*>(entitySectionData + cursor.getOffset());
 
-            cursor.step<ZeroX::EntitySection>();
+            ZeroX::EntitySectionFlags& sectionFlags = entitySection->flags;
+
+            // TODO(Karim): This double switch needs refactoring. Perhaps write a function to pre-populate indices based on desired mappings?
             
             const uint64_t descriptorCount = entitySection->descriptorCount;
+
+            switch (entitySection->type)
+            {
+            case ZeroX::EntitySectionType::SPRITE:
+            {
+                if ( ( sectionFlags & ZeroX::EntitySectionFlags::ALLOCATE_BATCH ) == ZeroX::EntitySectionFlags::ALLOCATE_BATCH )
+                {
+                    renderer::Command command{ .type = renderer::CommandType::ALLOCATE_RENDER_BATCH };
+
+                    // TODO(Karim): Maybe perform a lookup here to avoid magic numbers?
+                    const size_t shaderProgramIndex = 1;
+                    const size_t vertexArrayIndex   = 0;
+                    const size_t locationsIndex     = 1;
+                    const size_t meshIndex          = 0;
+
+                    std::memcpy(command.data, &shaderProgramIndex, sizeof(size_t));
+                    std::memcpy(command.data + sizeof(size_t), &vertexArrayIndex, sizeof(size_t));
+                    std::memcpy(command.data + 2 * sizeof(size_t), &locationsIndex, sizeof(size_t));
+                    std::memcpy(command.data + 3 * sizeof(size_t), &meshIndex, sizeof(size_t));
+                    std::memcpy(command.data + 4 * sizeof(size_t), &descriptorCount, sizeof(size_t));
+
+                    result.renderCommands.push_back(command);
+
+                    sectionFlags &= ~ZeroX::EntitySectionFlags::ALLOCATE_BATCH;
+                }
+
+                break;
+            }
+            default:
+                break;
+            }
+
+            cursor.step<ZeroX::EntitySection>();
 
             for (uint64_t j = 0; j < descriptorCount; ++j)
             {
@@ -380,16 +415,6 @@ namespace ZeroX
             { .locationsIndex = 1, .shaderProgramIndex = 1 },
         };
 
-        renderer::RenderBatchConfig renderBatchConfigs[1] = {
-            {
-                .batchIndex = 0,
-                .shaderProgramIndex = 1,
-                .vertexArrayIndex = 0,
-                .shaderLocationsIndex = 1,
-                .meshIndex = 0
-            }
-        };
-
         renderer::Texture textures[1] = {
             {
                 .path = "./textures/the_mega_texture.png",
@@ -403,7 +428,6 @@ namespace ZeroX
         renderer::GraphicsConfig graphicsConfig = {
             .meshes = meshes,
             .textures = textures,
-            .renderEntityCounts = &entityCount,
             .shaders = shaderList,
             .cameraEye = &cameraEye,
             .cameraFrustum = &cameraFrustum,
@@ -411,7 +435,6 @@ namespace ZeroX
             .cameraUniformNames = cameraUniformNames,
             .shaderCompileSteps = shaderCompileSteps,
             .shaderLocationsLinks = shaderLocationsLinks,
-            .renderBatchConfigs = renderBatchConfigs,
             .meshCount = 1,
             .bufferCount = 3,
             .vertexArrayCount = 1,
@@ -419,10 +442,8 @@ namespace ZeroX
             .shaderCount = 4,
             .shaderProgramCount = 2,
             .locationsDescriptorCount = 2,
-            .renderBatchCount = 1,
             .compileStepCount = 2,
-            .locationsLinkCount = 2,
-            .batchConfigCount = 1
+            .locationsLinkCount = 2
         };
 
         renderer::Allocator renderAllocator;
@@ -442,7 +463,7 @@ namespace ZeroX
             renderer::Frame renderFrame;
             if (frameBuffer->pop(renderFrame))
             {
-                renderer::processFrame(mutableGraphicsMemory, &renderFrame);
+                renderer::processFrame(&renderAllocator, mutableGraphicsMemory, &renderFrame);
             }
 
             const IWindow::Size clientSize = m_window->getSize();

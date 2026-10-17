@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 namespace ZeroX
 {
@@ -23,9 +24,20 @@ namespace ZeroX
 
 	enum class EntitySectionFlags : uint64_t
 	{
-		NONE = 0
+		NONE				= 0,
+		ALLOCATE_BATCH		= 1,
+		SET_VERTEX_LAYOUT	= 1 << 1
 		// etc...
 	};
+
+	inline EntitySectionFlags operator|(EntitySectionFlags a, EntitySectionFlags b) {
+		return static_cast<EntitySectionFlags>(static_cast<std::underlying_type_t<EntitySectionFlags>>(a) | static_cast<std::underlying_type_t<EntitySectionFlags>>(b)); }
+	inline EntitySectionFlags operator&(EntitySectionFlags a, EntitySectionFlags b) {
+		return static_cast<EntitySectionFlags>(static_cast<std::underlying_type_t<EntitySectionFlags>>(a) & static_cast<std::underlying_type_t<EntitySectionFlags>>(b));
+	}
+	inline EntitySectionFlags& operator|=(EntitySectionFlags& a, EntitySectionFlags b) { a = (a | b); return a; }
+	inline EntitySectionFlags& operator&=(EntitySectionFlags& a, EntitySectionFlags b) { a = (a & b); return a; }
+	inline EntitySectionFlags operator~(EntitySectionFlags a) { return static_cast<EntitySectionFlags>(~static_cast<std::underlying_type_t<EntitySectionFlags>>(a)); }
 
 	struct alignas(16) EntitySection
 	{
@@ -37,7 +49,7 @@ namespace ZeroX
 
 	struct alignas(16) RenderDescriptor
 	{
-		const std::byte* entitySectionData	{ nullptr };
-		uint64_t sectionCount				{ 0 };
+		std::byte* entitySectionData	{ nullptr };
+		uint64_t sectionCount			{ 0 };
 	};
 }
