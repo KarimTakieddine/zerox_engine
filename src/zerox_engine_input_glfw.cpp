@@ -218,7 +218,48 @@ namespace ZeroX
                     break;
                 }
 
+                const uint64_t controllerMappingMask = 0xFFFFULL << (16 * controllerIndex);
+
+                ZeroX::globalControllerMappings &= ~( controllerMappingMask );
+
+                const uint64_t mapping          = ( controllerIndex << 8 ) | id;
+                ZeroX::globalControllerMappings |= ( mapping << ( 16 * controllerIndex ) );
+
                 ++controllerIndex;
+            }
+            else
+            {
+                for (uint64_t i = 0; i < 4; ++i)
+                {
+                    const uint64_t controllerMappingMask = 0xFFFFULL << ( 16 * i );
+
+                    const uint64_t mapping      = ( ZeroX::globalControllerMappings & controllerMappingMask ) >> ( 16 * i );
+                    const uint64_t gamepadIndex = ( mapping & 0xFF00ULL ) >> 8;
+                    const uint64_t joystickId   = ( mapping & 0xFFULL );
+
+                    if (joystickId == id)
+                    {
+                        switch (gamepadIndex)
+                        {
+                        case 0:
+                            clearGamepadState(&input->gamePad1);
+                            break;
+                        case 1:
+                            clearGamepadState(&input->gamePad2);
+                            break;
+                        case 2:
+                            clearGamepadState(&input->gamePad3);
+                            break;
+                        case 3:
+                            clearGamepadState(&input->gamePad4);
+                            break;
+                        default:
+                            break;
+                        }
+
+                        break;
+                    }
+                }
             }
         }
     }

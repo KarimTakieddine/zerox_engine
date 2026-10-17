@@ -68,6 +68,7 @@ namespace ZeroX
     };
 
     inline uint16_t globalControllerState{ 0 };
+    inline uint64_t globalControllerMappings{ 0 };
 
     inline glm::vec2 getScaledRadialInput(const glm::vec2& input, float deadzone)
     {
@@ -108,5 +109,10 @@ namespace ZeroX
     inline bool isButtonReleasedThisFrame(const GamePad& gamePad, Button button)
     {
         return ( getButtonState(gamePad.packedState, button) & KeyState::RELEASED_THIS_FRAME) == KeyState::RELEASED_THIS_FRAME;
+    }
+
+    inline void clearGamepadState(GamePad* gamepad)
+    {
+        *gamepad = { };
     }
 }
