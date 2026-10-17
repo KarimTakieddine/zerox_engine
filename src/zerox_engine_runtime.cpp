@@ -85,6 +85,9 @@ namespace ZeroX
         BumpAllocator<16> gameAllocator;
         gameAllocator.allocate(4096);
 
+        auto* input = gameAllocator.requestMemory<Input>();
+        assert(input);
+
         uint64_t libraryChangeCounter = 0;
 
         if (!initializeGameLibrary(gameConfig))
@@ -147,7 +150,11 @@ namespace ZeroX
 
             // update input
 
-            // TODO
+            updateInput(input);
+
+            const glm::vec2& leftStickInput = input->gamePad1.leftStickInput;
+
+            LOG_INFO << leftStickInput.x;
 
             // wait for render thread
 
@@ -172,7 +179,7 @@ namespace ZeroX
 
             // update game
 
-            m_gameLibrary->getFunctions().updateGame(&gameAllocator, frameDeltaTime);
+            m_gameLibrary->getFunctions().updateGame(&gameAllocator, time.smoothDeltaTime);
 
             // Submit render commands
 
