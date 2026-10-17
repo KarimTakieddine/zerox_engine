@@ -152,10 +152,6 @@ namespace ZeroX
 
             updateInput(input);
 
-            const glm::vec2& leftStickInput = input->gamePad1.leftStickInput;
-
-            LOG_INFO << leftStickInput.x;
-
             // wait for render thread
 
             const uint64_t renderFrameIndex = m_renderFrameIndex.load(std::memory_order_acquire);
