@@ -16,14 +16,14 @@ namespace ZeroX
 {
     GLFWWindow::GLFWWindow(const WindowConfig& config)
     {
-        const int width     = config.width;
-        const int height    = config.height;
+        const int width     = static_cast<int>(config.width);
+        const int height    = static_cast<int>(config.height);
 
-        if (width <= 0 || height <= 0)
+        if (width == 0 || height == 0)
             throw std::invalid_argument("Failed to initialize window. Width and/or height is configured incorrectly");
 
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, config.openGLVersionMajor);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, config.openGLVersionMinor);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, static_cast<int>(config.openGLVersionMajor));
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, static_cast<int>(config.openGLVersionMinor));
         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
         glfwWindowHint(GLFW_RESIZABLE, config.resizeable ? GL_TRUE : GL_FALSE);
 

@@ -298,7 +298,7 @@ namespace ZeroX
             return false;
         }
 
-        return m_gameLibraryWatcher->startWatching(gameDirectoryPath.string().c_str(), config.gameLibraryFile);
+        return m_gameLibraryWatcher->startWatching(gameDirectoryPath.string().c_str(), config.gameLibraryFile.c_str());
     }
 
     bool EngineRuntime::initializeGameLibrary(const GameConfig& config)

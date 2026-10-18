@@ -6,6 +6,7 @@
 #include <mesh.hpp>
 #include <shader.h>
 
+#include "config/zerox_config_parser.h"
 #include "game_library_watcher.h"
 #include "zerox_engine_logger.h"
 #include "zerox_engine_runtime.h"
@@ -17,6 +18,13 @@ int main(int argc, char** argv)
     ZeroX::globalEngineLogger = engineLogger.get();
     engineLogger->initialize();
 
+    ZeroX::EngineConfig engineConfig;
+    ZeroX::ParseError parseError = { };
+
+    ZeroX::parseEngineConfig("./config/engineConfig.xml", engineConfig, &parseError);
+
+    ZeroX::setReasonableDefaults(engineConfig);
+
     // TODO(Karim): Do we need heap memory here honestly?
 
     try
@@ -27,8 +35,8 @@ int main(int argc, char** argv)
             .height             = 1080,
             .openGLVersionMajor = 4,
             .openGLVersionMinor = 6,
-            .fullscreen         = false, // TODO(Karim): This needs fixing!
-            .resizeable         = true
+            .resizeable         = true,
+            .fullscreen         = false // TODO(Karim): This needs fixing!
         };
 
         std::unique_ptr<ZeroX::EngineRuntime> engineRuntime = std::make_unique<ZeroX::EngineRuntime>(windowConfig);
