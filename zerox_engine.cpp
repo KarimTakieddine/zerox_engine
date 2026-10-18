@@ -18,6 +18,8 @@ int main(int argc, char** argv)
     ZeroX::globalEngineLogger = engineLogger.get();
     engineLogger->initialize();
 
+    // TODO(Karim): Load config via future after starting renderer thread
+
     ZeroX::EngineConfig engineConfig;
     ZeroX::ParseError parseError = { };
 
@@ -40,8 +42,6 @@ int main(int argc, char** argv)
         };
 
         std::unique_ptr<ZeroX::EngineRuntime> engineRuntime = std::make_unique<ZeroX::EngineRuntime>(windowConfig);
-
-        // TODO(Karim): Refactor these to XML configs!
 
 #ifdef _WIN32
         ZeroX::GameConfig gameConfig = {
