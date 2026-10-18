@@ -5,7 +5,8 @@
 #include "game_library.h"
 #include "game_library_watcher.h"
 #include "zerox_audio_player.h"
-#include "zerox_engine_config.h"
+#include "config/zerox_game_config.h"
+#include "config/zerox_window_config.h"
 #include "zerox_window.h"
 
 namespace ZeroX

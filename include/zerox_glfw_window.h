@@ -2,6 +2,7 @@
 
 #include <GLFW/glfw3.h>
 
+#include "config/zerox_window_config.h"
 #include "zerox_window.h"
 
 namespace ZeroX

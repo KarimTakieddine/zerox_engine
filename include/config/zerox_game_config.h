@@ -4,7 +4,7 @@
 
 namespace ZeroX
 {
-    struct GameConfig
+	struct GameConfig
     {
         const char* gameLibraryDir  { nullptr };
         const char* gameLibraryFile { nullptr };

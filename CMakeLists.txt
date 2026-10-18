@@ -13,6 +13,7 @@ set(BINARY_DIR bin)
 set(PLATFORM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_platform")
 set(RENDERER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine_renderer")
 set(MEMORY_READER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/memory_reader")
+set(PUGIXML_DIR "${CMAKE_CURRENT_SOURCE_DIR}/pugixml")
 
 Project(${PROJECT_NAME})
 
@@ -41,15 +42,18 @@ elseif (LINUX)
     find_package(glfw3 3.4 REQUIRED)
 endif()
 
+add_subdirectory(${PUGIXML_DIR})
+
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${INCLUDE_DIR}
     ${MINIAUDIO_DIR}
     ${PLATFORM_DIR}/include
     ${RENDERER_DIR}/include
     "${RENDERER_DIR}/zerox_engine_glad/include"
-    ${MEMORY_READER_DIR}/include)
+    ${MEMORY_READER_DIR}/include
+    ${PUGIXML_DIR}/src)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE zerox_engine_platform zerox_engine_renderer glfw)
+target_link_libraries(${PROJECT_NAME} PRIVATE zerox_engine_platform zerox_engine_renderer glfw pugixml::static)
 
 add_custom_command(TARGET Assets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${AUDIO_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${AUDIO_DIR}
