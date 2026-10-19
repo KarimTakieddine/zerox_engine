@@ -101,6 +101,7 @@ namespace ZeroX
 			return;
 		}
 
+		// TODO(Karim): This needs fixing!
 		const std::filesystem::path copyPath = gameLibraryDirPath / (std::string(config.gameLibraryFile) + '_' + std::to_string(0));
 		if (!platform::copyFile(gameLibraryPath.string().c_str(), copyPath.string().c_str()))
 		{
