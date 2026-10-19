@@ -1,6 +1,37 @@
+#include <unordered_map>
+
 #include <pugixml.hpp>
 
 #include "config/zerox_config_parser.h"
+
+namespace
+{
+	const std::unordered_map<std::string, ZeroX::SoundType> STRING_TO_SOUND_TYPE = {
+		{ "effect", ZeroX::SoundType::SOUND_EFFECT },
+		{ "music", ZeroX::SoundType::BGM }
+	};
+
+	ZeroX::SoundType parseSoundType(const std::string& type)
+	{
+		const auto it = STRING_TO_SOUND_TYPE.find(type);
+		if (it == STRING_TO_SOUND_TYPE.cend())
+		{
+			return ZeroX::SoundType::UNKNOWN;
+		}
+
+		return it->second;
+	}
+
+	ZeroX::AudioSound parseAudioSound(const pugi::xml_node node)
+	{
+		ZeroX::AudioSound sound;
+
+		if (pugi::xml_attribute pathAttribute = node.attribute("path")) { sound.path = pathAttribute.as_string(); }
+		if (pugi::xml_attribute typeAttribute = node.attribute("type")) { sound.type = parseSoundType(typeAttribute.as_string()); }
+
+		return sound;
+	}
+}
 
 namespace ZeroX
 {
@@ -26,6 +57,18 @@ namespace ZeroX
 		if (pugi::xml_attribute libraryDirAttribute	= node.attribute("libraryDir"))				{ config.gameLibraryDir = libraryDirAttribute.as_string(); }
 		if (pugi::xml_attribute libraryFileAttribute = node.attribute("libraryFile"))			{ config.gameLibraryFile = libraryFileAttribute.as_string(); }
 		if (pugi::xml_attribute maxQueuedFramesAttribute = node.attribute("maxQueuedFrames"))	{ config.maxQueuedFrames = maxQueuedFramesAttribute.as_uint(); }
+
+		return config;
+	}
+
+	AudioConfig parseAudioConfig(const pugi::xml_node& node)
+	{
+		AudioConfig config;
+
+		for (pugi::xml_node soundNode: node.children("Sound"))
+		{
+			config.sounds.push_back(::parseAudioSound(soundNode));
+		}
 
 		return config;
 	}

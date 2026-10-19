@@ -153,114 +153,118 @@ namespace ZeroX
         LOG_INFO << "Successfully intialized Window instance. Starting rendering thread";
         m_rendererThread = std::thread(&EngineRuntime::render, this, &renderFrameBuffer);
 
-        // TODO(Karim): Audio stuff...
-        audioPlayerFuture.get();
-        LOG_INFO << "Successfully initialized audio player";
-
-        GameLibrary* gameLibrary = gameLibraryFuture.get();
-        LOG_INFO << "Successfully intialized game library. Proceeding to initialize allocator";
-
-        BumpAllocator<16> gameAllocator;
-        gameAllocator.allocate(4096);
-
-        auto* input = gameAllocator.requestMemory<Input>();
-
-        if (!gameLibrary->getFunctions().initGame(&gameAllocator))
+        try
         {
-            throw std::runtime_error("Game library failed to initialize allocator memory");
-        }
+            // TODO(Karim): Audio stuff...
+            audioPlayerFuture.get();
+            LOG_INFO << "Successfully initialized audio player";
 
-        LOG_INFO << "Game library successfully initialized allocator memory. Starting file watch";
+            GameLibrary* gameLibrary = gameLibraryFuture.get();
+            LOG_INFO << "Successfully intialized game library. Proceeding to initialize allocator";
 
-        uint64_t libraryWatchCounter{ 0 };
-        GameLibraryWatcher* gameLibraryWatcher = gameLibraryWatcherFuture.get();
+            BumpAllocator<16> gameAllocator;
+            gameAllocator.allocate(4096);
 
-        m_window->setResizeCallback([&](int width, int height) -> void {
-            if (width <= 0 || height <= 0) { return; }
-            
-            renderer::Frame frame;
-            renderer::Command setAspectRatioCommand{ .type = renderer::CommandType::SET_CAMERA_ASPECT_RATIO };
-            std::memcpy(setAspectRatioCommand.data, &width, sizeof(int));
-            std::memcpy(setAspectRatioCommand.data + sizeof(int), &height, sizeof(int));
-            frame.renderCommands.push_back(setAspectRatioCommand);
-            while (!renderFrameBuffer.push(frame))
+            auto* input = gameAllocator.requestMemory<Input>();
+
+            if (!gameLibrary->getFunctions().initGame(&gameAllocator))
             {
-            
-            }
-        });
-
-        uint64_t frameIndex{ 0 };
-        Time time = { };
-
-        while (!m_window->shouldClose())
-        {
-            m_window->processEvents();
-
-            updateInput(input);
-
-            const uint64_t watchCounter = gameLibraryWatcher->getChangeCounter();
-
-            if (libraryWatchCounter != watchCounter)
-            {
-                const platform::FileWriteEvent& libraryWriteEvent = gameLibraryWatcher->getFileWriteEvent();
-
-                if (!reloadGameLibrary(libraryWriteEvent.parentDirectory.c_str(), libraryWriteEvent.targetFilename.c_str(), watchCounter))
-                {
-                    LOG_WARN << "Failed to re-load game library file: " << libraryWriteEvent.targetFilename;
-                }
-                else
-                {
-                    LOG_INFO << "Successfully re-loaded game libary. Setting change count to: " << watchCounter;
-                }
-
-                libraryWatchCounter = watchCounter;
+                throw std::runtime_error("Game library failed to initialize allocator memory");
             }
 
-            if (!gameLibrary->isLoaded() || !gameLibrary->isValid())
+            LOG_INFO << "Game library successfully initialized allocator memory. Starting file watch";
+
+            uint64_t libraryWatchCounter{ 0 };
+            GameLibraryWatcher* gameLibraryWatcher = gameLibraryWatcherFuture.get();
+
+            m_window->setResizeCallback([&](int width, int height) -> void {
+                if (width <= 0 || height <= 0) { return; }
+
+                renderer::Frame frame;
+                renderer::Command setAspectRatioCommand{ .type = renderer::CommandType::SET_CAMERA_ASPECT_RATIO };
+                std::memcpy(setAspectRatioCommand.data, &width, sizeof(int));
+                std::memcpy(setAspectRatioCommand.data + sizeof(int), &height, sizeof(int));
+                frame.renderCommands.push_back(setAspectRatioCommand);
+                while (!renderFrameBuffer.push(frame))
+                {
+
+                }
+            });
+
+            uint64_t frameIndex{ 0 };
+            Time time = { };
+
+            while (!m_window->shouldClose())
             {
+                m_window->processEvents();
+
+                updateInput(input);
+
+                const uint64_t watchCounter = gameLibraryWatcher->getChangeCounter();
+
+                if (libraryWatchCounter != watchCounter)
+                {
+                    const platform::FileWriteEvent& libraryWriteEvent = gameLibraryWatcher->getFileWriteEvent();
+
+                    if (!reloadGameLibrary(libraryWriteEvent.parentDirectory.c_str(), libraryWriteEvent.targetFilename.c_str(), watchCounter))
+                    {
+                        LOG_WARN << "Failed to re-load game library file: " << libraryWriteEvent.targetFilename;
+                    }
+                    else
+                    {
+                        LOG_INFO << "Successfully re-loaded game libary. Setting change count to: " << watchCounter;
+                    }
+
+                    libraryWatchCounter = watchCounter;
+                }
+
+                if (!gameLibrary->isLoaded() || !gameLibrary->isValid())
+                {
+                    globalEngineLogger->processMessages();
+                    continue;
+                }
+
+                const uint64_t renderFrameIndex = m_renderFrameIndex.load(std::memory_order_acquire);
+
+                const uint64_t maxQueuedFrames = 4;
+                if (frameIndex >= maxQueuedFrames)
+                {
+                    int64_t difference = frameIndex - renderFrameIndex;
+
+                    if (difference >= maxQueuedFrames)
+                    {
+                        m_renderFrameIndex.wait(renderFrameIndex);
+                    }
+                }
+
+                const double frameDeltaTime = m_frameDeltaTime.load(std::memory_order_acquire);
+                const double alpha          = 2.0 / 61;
+                time.smoothDeltaTime        = ( frameDeltaTime * alpha ) + ( time.smoothDeltaTime * (1.0 - alpha) );
+
+                gameLibrary->getFunctions().updateGame(&gameAllocator, time.smoothDeltaTime);
+
+                const RenderDescriptor renderDescriptor = gameLibrary->getFunctions().initRenderDescriptor(&gameAllocator);
+                const renderer::Frame renderFrame       = ::buildRenderFrame(&gameAllocator, renderDescriptor);
+
+                while (!renderFrameBuffer.push(renderFrame))
+                {
+
+                }
+
                 globalEngineLogger->processMessages();
-                continue;
+
+                ++frameIndex;
             }
 
-            const uint64_t renderFrameIndex = m_renderFrameIndex.load(std::memory_order_acquire);
+            gameLibraryWatcher->stopWatching();
 
-            const uint64_t maxQueuedFrames = 4;
-            if (frameIndex >= maxQueuedFrames)
-            {
-                int64_t difference = frameIndex - renderFrameIndex;
-
-                if (difference >= maxQueuedFrames)
-                {
-                    m_renderFrameIndex.wait(renderFrameIndex);
-                }
-            }
-
-            const double frameDeltaTime = m_frameDeltaTime.load(std::memory_order_acquire);
-            const double alpha          = 2.0 / 61;
-            time.smoothDeltaTime        = ( frameDeltaTime * alpha ) + ( time.smoothDeltaTime * (1.0 - alpha) );
-
-            gameLibrary->getFunctions().updateGame(&gameAllocator, time.smoothDeltaTime);
-
-            const RenderDescriptor renderDescriptor = gameLibrary->getFunctions().initRenderDescriptor(&gameAllocator);
-            const renderer::Frame renderFrame       = ::buildRenderFrame(&gameAllocator, renderDescriptor);
-            
-            while (!renderFrameBuffer.push(renderFrame))
-            {
-            
-            }
-
-            globalEngineLogger->processMessages();
-
-            ++frameIndex;
+            stopRendering();
         }
-
-        gameLibraryWatcher->stopWatching();
-
-        m_runRenderer.store(false, std::memory_order_release);
-
-        if (m_rendererThread.joinable())
+        catch (const std::exception& e)
         {
-            m_rendererThread.join();
+            stopRendering();
+
+            throw;
         }
     }
 
@@ -283,6 +287,16 @@ namespace ZeroX
         }
 
         return m_contextLoader->getEngineContext()->gameLibrary->load(destinationPath.string().c_str());
+    }
+
+    void EngineRuntime::stopRendering()
+    {
+        m_runRenderer.store(false, std::memory_order_release);
+
+        if (m_rendererThread.joinable())
+        {
+            m_rendererThread.join();
+        }
     }
 
     void EngineRuntime::render(renderer::FrameBuffer* frameBuffer)

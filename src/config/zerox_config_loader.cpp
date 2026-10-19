@@ -13,14 +13,19 @@ namespace ZeroX
 		}
 	}
 
-	std::future<GameConfig> ConfigLoader::getGameConfigFuture()
-	{
-		return m_gameConfigPromise.get_future();
-	}
-
 	std::future<WindowConfig> ConfigLoader::getWindowConfigFuture()
 	{
 		return m_windowConfigPromise.get_future();
+	}
+
+	std::future<AudioConfig> ConfigLoader::getAudioConfigFuture()
+	{
+		return m_audioConfigPromise.get_future();
+	}
+
+	std::future<GameConfig> ConfigLoader::getGameConfigFuture()
+	{
+		return m_gameConfigPromise.get_future();
 	}
 
 	void ConfigLoader::load(const char* file)
@@ -37,6 +42,7 @@ namespace ZeroX
 			auto e = std::make_exception_ptr(std::runtime_error(parse_result.description()));
 
 			m_windowConfigPromise.set_exception(e);
+			m_audioConfigPromise.set_exception(e);
 			m_gameConfigPromise.set_exception(e);
 
 			return;
@@ -48,6 +54,7 @@ namespace ZeroX
 			auto e = std::make_exception_ptr(std::runtime_error("No document root element was found"));
 
 			m_windowConfigPromise.set_exception(e);
+			m_audioConfigPromise.set_exception(e);
 			m_gameConfigPromise.set_exception(e);
 
 			return;
@@ -64,6 +71,18 @@ namespace ZeroX
 		}
 
 		m_windowConfigPromise.set_value(windowConfig);
+
+		pugi::xml_node audioConfigNode 	= root.child("Audio");
+		AudioConfig audioConfig 		= { };
+
+		if (audioConfigNode)
+		{
+			audioConfig = parseAudioConfig(audioConfigNode);
+
+			// TODO(Karim): Set reasonable defaults / validate here
+		}
+
+		m_audioConfigPromise.set_value(audioConfig);
 
 		pugi::xml_node gameConfigNode	= root.child("Game");
 		GameConfig gameConfig			= { };

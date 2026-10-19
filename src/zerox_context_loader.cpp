@@ -46,13 +46,14 @@ namespace ZeroX
 
 	void ContextLoader::load(const char* configFile)
 	{
-		auto gameConfigFuture = m_configLoader->getGameConfigFuture();
+		auto audioConfigFuture	= m_configLoader->getAudioConfigFuture();
+		auto gameConfigFuture 	= m_configLoader->getGameConfigFuture();
 
 		m_configLoader->load(configFile);
 
 		try
 		{
-			m_audioLoadThread	= std::thread(&ContextLoader::loadAudio, this, AudioConfig{ });
+			m_audioLoadThread	= std::thread(&ContextLoader::loadAudio, this, audioConfigFuture.get());
 			m_gameLoadThread	= std::thread(&ContextLoader::loadGame, this, gameConfigFuture.get());
 		}
 		catch (const std::exception&)

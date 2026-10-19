@@ -11,7 +11,7 @@ namespace ZeroX
 #ifdef _WIN32
         static constexpr const char* DEFAULT_GAME_LIBRARY_FILENAME  = "zerox_game.dll";
 #elif __linux__
-        static constexpr const char* DEFAULT_GAME_LIBRARY_FILENAME  = "zerox_game.so";
+        static constexpr const char* DEFAULT_GAME_LIBRARY_FILENAME  = "libzerox_game.so";
 #endif
         static constexpr unsigned int DEFAULT_MAX_QUEUED_FRAMES     = 1;
 
