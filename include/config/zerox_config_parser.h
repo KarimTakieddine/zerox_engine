@@ -1,6 +1,9 @@
 #pragma once
 
-#include "zerox_engine_config.h"
+#include <pugixml.hpp>
+
+#include "zerox_game_config.h"
+#include "zerox_window_config.h"
 
 namespace ZeroX
 {
@@ -20,6 +23,8 @@ namespace ZeroX
 		ParseErrorCode code		{ ParseErrorCode::NONE };
 	};
 
-	bool parseEngineConfig(const char* file, EngineConfig& config, ParseError* error);
-	void setReasonableDefaults(EngineConfig& config);
+	WindowConfig parseWindowConfig(const pugi::xml_node& node);
+	GameConfig parseGameConfig(const pugi::xml_node& node);
+	void setReasonableDefaults(WindowConfig& config);
+	void setReasonableDefaults(GameConfig& config);
 }

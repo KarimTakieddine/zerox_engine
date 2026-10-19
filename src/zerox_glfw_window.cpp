@@ -42,7 +42,6 @@ namespace ZeroX
 
         glfwSetWindowUserPointer(m_handle, this);
         glfwSetWindowSizeCallback(m_handle, ::onWindowResize);
-        glfwMakeContextCurrent(m_handle);
     }
 
     GLFWWindow::~GLFWWindow()

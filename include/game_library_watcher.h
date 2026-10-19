@@ -13,7 +13,9 @@ namespace ZeroX
 
         bool startWatching(const char* parentDirectory, const char* filename);
         void stopWatching();
+
         uint64_t getChangeCounter() const;
+        const platform::FileWriteEvent& getFileWriteEvent() const;
 
     private:
         void execute();

@@ -34,6 +34,11 @@ namespace ZeroX
         }
     }
 
+    const platform::FileWriteEvent& GameLibraryWatcher::getFileWriteEvent() const
+    {
+        return m_fileWriteEvent;
+    }
+
     uint64_t GameLibraryWatcher::getChangeCounter() const
     {
         return m_fileChangeCounter.load(std::memory_order_acquire);
