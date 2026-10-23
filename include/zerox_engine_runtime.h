@@ -16,7 +16,7 @@ namespace ZeroX
 
     private:
         void render(IWindow* window, renderer::FrameBuffer* frameBuffer);
-        bool reloadGameLibrary(const char* parentDirectory, const char* filename, uint64_t counter);
+        bool reloadGameLibrary(GameLibrary* gameLibrary, const char* parentDirectory, const char* filename, uint64_t counter);
         void stopRendering();
 
         std::unique_ptr<EngineContext> m_context{ nullptr };

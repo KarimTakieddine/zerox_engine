@@ -128,13 +128,31 @@ namespace ZeroX
 			{
 				libraryPromise.set_exception(std::make_exception_ptr(std::runtime_error(std::string("Failed to initialize game library. Is not a file: ") + gameLibraryPath.string())));
 			}
-			else if (!m_gameLibrary->load(gameLibraryPath.string().c_str()))
-			{
-				libraryPromise.set_exception(std::make_exception_ptr(std::runtime_error(std::string("Failed to initialize game library. Could not load functions from") + gameLibraryPath.string())));
-			}
 			else
 			{
-				libraryPromise.set_value(m_gameLibrary.get());
+				std::string copyPath	= gameLibraryPath.string();
+				std::string extension	= gameLibraryPath.extension().string();
+
+				auto pos = copyPath.find(extension);
+				if (pos == std::string::npos)
+				{
+					pos = copyPath.empty() ? 0 : copyPath.size() - 1;
+				}
+
+				copyPath.insert(pos, "_0");
+
+				if (!platform::copyFile(gameLibraryPath.string().c_str(), copyPath.c_str()))
+				{
+					libraryPromise.set_exception(std::make_exception_ptr(std::runtime_error(std::string("Failed to initialize game library. Could not copy file to: ") + copyPath)));
+				}
+				else if (!m_gameLibrary->load(copyPath.c_str()))
+				{
+					libraryPromise.set_exception(std::make_exception_ptr(std::runtime_error(std::string("Failed to initialize game library. Could not load functions from: ") + copyPath)));
+				}
+				else
+				{
+					libraryPromise.set_value(m_gameLibrary.get());
+				}
 			}
 		}
 

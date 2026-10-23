@@ -37,6 +37,27 @@ namespace
         return platform::copyFile(gameLibraryPath.string().c_str(), destinationPath.string().c_str());
     }
 
+    bool reloadGameLibrary(ZeroX::GameLibrary* gameLibrary, const char* parentDirectory, const char* filename, uint64_t counter)
+    {
+        const std::filesystem::path gameDirectoryPath(parentDirectory);
+        const std::filesystem::path gameLibraryPath = gameDirectoryPath / filename;
+
+        if (platform::getFileSize(gameLibraryPath.string().c_str()) == 0)
+        {
+            LOG_ERROR << "Failed to reload game library: File size is 0";
+            return false;
+        }
+
+        std::filesystem::path destinationPath;
+        if (!::copyGameLibrary(gameDirectoryPath, gameLibraryPath, destinationPath, counter))
+        {
+            LOG_ERROR << "Failed to reload game library: Failed to copy file from " << gameLibraryPath.string().c_str() << " to " << destinationPath.string().c_str();
+            return false;
+        }
+
+        return gameLibrary->load(destinationPath.string().c_str());
+    }
+
     renderer::Frame buildRenderFrame(BumpAllocator<16>* gameAllocator, const ZeroX::RenderDescriptor& descriptor)
     {
         std::byte* gameMemory = static_cast<std::byte*>(gameAllocator->peek());
@@ -140,15 +161,19 @@ namespace ZeroX
 
         renderer::FrameBuffer renderFrameBuffer;
         renderFrameBuffer.allocate(64);
+
         m_rendererThread = std::thread(&EngineRuntime::render, this, window, &renderFrameBuffer);
 
         GameLibrary* gameLibrary = gameLibraryFuture.get();
 
         BumpAllocator<16> gameAllocator;
         gameAllocator.allocate(4096);
+
+        auto* input = gameAllocator.requestMemory<Input>();
+
         if (!gameLibrary->getFunctions().initGame(&gameAllocator))
         {
-            LOG_INFO << "Failed to initialize game library";
+            LOG_WARN << "Failed to initialize game library";
         }
         else
         {
@@ -156,167 +181,87 @@ namespace ZeroX
         }
 
         GameLibraryWatcher* gameLibraryWatcher = gameLibraryWatcherFuture.get();
+        uint64_t libraryChangeCounter{ 0 };
 
         IAudioPlayer* audioPlayer = audioPlayerFuture.get();
         LOG_INFO << "Successfully intialized audio player";
 
+        window->setResizeCallback([&](int width, int height) -> void {
+            if (width <= 0 || height <= 0) { return; }
+
+            renderer::Frame frame;
+            renderer::Command setAspectRatioCommand{ .type = renderer::CommandType::SET_CAMERA_ASPECT_RATIO };
+            std::memcpy(setAspectRatioCommand.data, &width, sizeof(int));
+            std::memcpy(setAspectRatioCommand.data + sizeof(int), &height, sizeof(int));
+            frame.renderCommands.push_back(setAspectRatioCommand);
+            while (!renderFrameBuffer.push(frame))
+            {
+            
+            }
+        });
+
+        uint64_t frameIndex{ 0 };
         while (!window->shouldClose())
         {
             window->processEvents();
 
+            updateInput(input);
+
+            const uint64_t changeCounter = gameLibraryWatcher->getChangeCounter();
+            if (changeCounter != libraryChangeCounter)
+            {
+                const platform::FileWriteEvent& fileWriteEvent = gameLibraryWatcher->getFileWriteEvent();
+
+                if (!::reloadGameLibrary(gameLibrary, fileWriteEvent.parentDirectory.c_str(), fileWriteEvent.targetFilename.c_str(), changeCounter))
+                {
+                    LOG_WARN << "Failed to reload game library. Change count is: " << changeCounter;
+                }
+                else
+                {
+                    LOG_INFO << "Successfully re-loaded game library. Change count is: " << changeCounter;
+                }
+
+                libraryChangeCounter = changeCounter;
+            }
+
+            if (!gameLibrary->isLoaded() || !gameLibrary->isValid())
+            {
+                globalEngineLogger->processMessages();
+                continue;
+            }
+
+            const uint64_t renderFrameIndex = m_renderFrameIndex.load(std::memory_order_acquire);
+
+            const uint64_t maxQueuedFrames = 4; // TODO(Karim): Find a way to configure this
+            if (frameIndex >= maxQueuedFrames)
+            {
+                int64_t difference = frameIndex - renderFrameIndex;
+
+                if (difference >= maxQueuedFrames)
+                {
+                    m_renderFrameIndex.wait(renderFrameIndex);
+                }
+            }
+
+            const double frameDeltaTime = m_frameDeltaTime.load(std::memory_order_acquire);
+            /*
+                const double alpha      = 2.0 / 61;
+                time.smoothDeltaTime    = ( frameDeltaTime * alpha ) + ( time.smoothDeltaTime * (1.0 - alpha) );
+            */
+            gameLibrary->getFunctions().updateGame(&gameAllocator, frameDeltaTime);
+           
+            const RenderDescriptor renderDescriptor = gameLibrary->getFunctions().initRenderDescriptor(&gameAllocator);
+            const renderer::Frame renderFrame       = ::buildRenderFrame(&gameAllocator, renderDescriptor);
+
+            while (!renderFrameBuffer.push(renderFrame))
+            {
+
+            }
+
             globalEngineLogger->processMessages();
+
+            ++frameIndex;
         }
-
-        // Unload game library here?
-
-        //auto windowConfigFuture         = m_contextLoader->getWindowConfigFuture();
-        //auto audioPlayerFuture          = m_contextLoader->getAudioPlayerFuture();
-        //auto gameLibraryFuture          = m_contextLoader->getGameLibraryFuture();
-        //auto gameLibraryWatcherFuture   = m_contextLoader->getGameLibraryWatcherFuture();
-
-        //m_contextLoader->load(configPath);
-
-        //renderer::FrameBuffer renderFrameBuffer;
-        //renderFrameBuffer.allocate(64);
-
-        //m_window = std::make_unique<GLFWWindow>(windowConfigFuture.get());
-        //LOG_INFO << "Successfully intialized Window instance. Starting rendering thread";
-        //m_rendererThread = std::thread(&EngineRuntime::render, this, &renderFrameBuffer);
-
-        //try
-        //{
-        //    // TODO(Karim): Audio stuff...
-        //    audioPlayerFuture.get();
-        //    LOG_INFO << "Successfully initialized audio player";
-
-        //    GameLibrary* gameLibrary = gameLibraryFuture.get();
-        //    LOG_INFO << "Successfully intialized game library. Proceeding to initialize allocator";
-
-        //    BumpAllocator<16> gameAllocator;
-        //    gameAllocator.allocate(4096);
-
-        //    auto* input = gameAllocator.requestMemory<Input>();
-
-        //    if (!gameLibrary->getFunctions().initGame(&gameAllocator))
-        //    {
-        //        throw std::runtime_error("Game library failed to initialize allocator memory");
-        //    }
-
-        //    LOG_INFO << "Game library successfully initialized allocator memory. Starting file watch";
-
-        //    uint64_t libraryWatchCounter{ 0 };
-        //    GameLibraryWatcher* gameLibraryWatcher = gameLibraryWatcherFuture.get();
-
-        //    m_window->setResizeCallback([&](int width, int height) -> void {
-        //        if (width <= 0 || height <= 0) { return; }
-
-        //        renderer::Frame frame;
-        //        renderer::Command setAspectRatioCommand{ .type = renderer::CommandType::SET_CAMERA_ASPECT_RATIO };
-        //        std::memcpy(setAspectRatioCommand.data, &width, sizeof(int));
-        //        std::memcpy(setAspectRatioCommand.data + sizeof(int), &height, sizeof(int));
-        //        frame.renderCommands.push_back(setAspectRatioCommand);
-        //        while (!renderFrameBuffer.push(frame))
-        //        {
-
-        //        }
-        //    });
-
-        //    uint64_t frameIndex{ 0 };
-        //    Time time = { };
-
-        //    while (!m_window->shouldClose())
-        //    {
-        //        m_window->processEvents();
-
-        //        updateInput(input);
-
-        //        const uint64_t watchCounter = gameLibraryWatcher->getChangeCounter();
-
-        //        if (libraryWatchCounter != watchCounter)
-        //        {
-        //            const platform::FileWriteEvent& libraryWriteEvent = gameLibraryWatcher->getFileWriteEvent();
-
-        //            if (!reloadGameLibrary(libraryWriteEvent.parentDirectory.c_str(), libraryWriteEvent.targetFilename.c_str(), watchCounter))
-        //            {
-        //                LOG_WARN << "Failed to re-load game library file: " << libraryWriteEvent.targetFilename;
-        //            }
-        //            else
-        //            {
-        //                LOG_INFO << "Successfully re-loaded game libary. Setting change count to: " << watchCounter;
-        //            }
-
-        //            libraryWatchCounter = watchCounter;
-        //        }
-
-        //        if (!gameLibrary->isLoaded() || !gameLibrary->isValid())
-        //        {
-        //            globalEngineLogger->processMessages();
-        //            continue;
-        //        }
-
-        //        const uint64_t renderFrameIndex = m_renderFrameIndex.load(std::memory_order_acquire);
-
-        //        const uint64_t maxQueuedFrames = 4;
-        //        if (frameIndex >= maxQueuedFrames)
-        //        {
-        //            int64_t difference = frameIndex - renderFrameIndex;
-
-        //            if (difference >= maxQueuedFrames)
-        //            {
-        //                m_renderFrameIndex.wait(renderFrameIndex);
-        //            }
-        //        }
-
-        //        const double frameDeltaTime = m_frameDeltaTime.load(std::memory_order_acquire);
-        //        const double alpha          = 2.0 / 61;
-        //        time.smoothDeltaTime        = ( frameDeltaTime * alpha ) + ( time.smoothDeltaTime * (1.0 - alpha) );
-
-        //        gameLibrary->getFunctions().updateGame(&gameAllocator, time.smoothDeltaTime);
-
-        //        const RenderDescriptor renderDescriptor = gameLibrary->getFunctions().initRenderDescriptor(&gameAllocator);
-        //        const renderer::Frame renderFrame       = ::buildRenderFrame(&gameAllocator, renderDescriptor);
-
-        //        while (!renderFrameBuffer.push(renderFrame))
-        //        {
-
-        //        }
-
-        //        globalEngineLogger->processMessages();
-
-        //        ++frameIndex;
-        //    }
-
-        //    gameLibraryWatcher->stopWatching();
-
-        //    stopRendering();
-        //}
-        //catch (const std::exception& e)
-        //{
-        //    stopRendering();
-
-        //    throw;
-        //}
-    }
-
-    bool EngineRuntime::reloadGameLibrary(const char* parentDirectory, const char* filename, uint64_t counter)
-    {
-        const std::filesystem::path gameDirectoryPath(parentDirectory);
-        const std::filesystem::path gameLibraryPath = gameDirectoryPath / filename;
- 
-        if (platform::getFileSize(gameLibraryPath.string().c_str()) == 0)
-        {
-            LOG_ERROR << "Failed to reload game library: File size is 0";
-            return false;
-        }
-
-        std::filesystem::path destinationPath;
-        if (!::copyGameLibrary(gameDirectoryPath, gameLibraryPath, destinationPath, counter))
-        {
-            LOG_ERROR << "Failed to reload game library: Failed to copy file from " << gameLibraryPath.string().c_str() << " to " << destinationPath.string().c_str();
-            return false;
-        }
-
-        return false; // m_contextLoader->getEngineContext()->gameLibrary->load(destinationPath.string().c_str());
     }
 
     void EngineRuntime::stopRendering()
