@@ -4,6 +4,8 @@ namespace ZeroX
 {
     GameLibraryWatcher::~GameLibraryWatcher()
     {
+        stopWatching();
+
         if (m_monitoringThread.joinable())
         {
             m_monitoringThread.join();

@@ -5,95 +5,57 @@
 
 namespace ZeroX
 {
-	ConfigLoader::~ConfigLoader()
+	std::future<WindowConfig> loadWindowConfig(const pugi::xml_node& node)
 	{
-		if (m_loadThread.joinable())
-		{
-			m_loadThread.join();
-		}
+		return std::async(
+			std::launch::async, [node]() -> WindowConfig {
+
+				WindowConfig result = { };
+				if (node)
+				{
+					result = parseWindowConfig(node);
+
+					setReasonableDefaults(result);
+				}
+
+				return result;
+			}
+		);
 	}
 
-	std::future<WindowConfig> ConfigLoader::getWindowConfigFuture()
+	std::future<AudioConfig> loadAudioConfig(const pugi::xml_node& node)
 	{
-		return m_windowConfigPromise.get_future();
+		return std::async(
+			std::launch::async, [node]() -> AudioConfig {
+
+				AudioConfig result = { };
+				if (node)
+				{
+					result = parseAudioConfig(node);
+
+					// TODO(Karim): Implement: setReasonableDefaults(result);
+				}
+
+				return result;
+			}
+		);
 	}
 
-	std::future<AudioConfig> ConfigLoader::getAudioConfigFuture()
+	std::future<GameConfig> loadGameConfig(const pugi::xml_node& node)
 	{
-		return m_audioConfigPromise.get_future();
-	}
+		return std::async(
+			std::launch::async, [node]() -> GameConfig {
 
-	std::future<GameConfig> ConfigLoader::getGameConfigFuture()
-	{
-		return m_gameConfigPromise.get_future();
-	}
+				GameConfig result = { };
+				if (node)
+				{
+					result = parseGameConfig(node);
 
-	void ConfigLoader::load(const char* file)
-	{
-		m_loadThread = std::thread(&ConfigLoader::execute, this, file);
-	}
+					setReasonableDefaults(result);
+				}
 
-	void ConfigLoader::execute(const char* file)
-	{
-		pugi::xml_document document;
-		pugi::xml_parse_result parse_result = document.load_file(file, pugi::parse_minimal, pugi::xml_encoding::encoding_utf8);
-		if (!parse_result)
-		{
-			auto e = std::make_exception_ptr(std::runtime_error(parse_result.description()));
-
-			m_windowConfigPromise.set_exception(e);
-			m_audioConfigPromise.set_exception(e);
-			m_gameConfigPromise.set_exception(e);
-
-			return;
-		}
-
-		pugi::xml_node root = document.root().first_child();
-		if (!root)
-		{
-			auto e = std::make_exception_ptr(std::runtime_error("No document root element was found"));
-
-			m_windowConfigPromise.set_exception(e);
-			m_audioConfigPromise.set_exception(e);
-			m_gameConfigPromise.set_exception(e);
-
-			return;
-		}
-
-		pugi::xml_node windowConfigNode = root.child("Window");
-		WindowConfig windowConfig		= { };
-
-		if (windowConfigNode)
-		{
-			windowConfig = parseWindowConfig(windowConfigNode);
-
-			setReasonableDefaults(windowConfig);
-		}
-
-		m_windowConfigPromise.set_value(windowConfig);
-
-		pugi::xml_node audioConfigNode 	= root.child("Audio");
-		AudioConfig audioConfig 		= { };
-
-		if (audioConfigNode)
-		{
-			audioConfig = parseAudioConfig(audioConfigNode);
-
-			// TODO(Karim): Set reasonable defaults / validate here
-		}
-
-		m_audioConfigPromise.set_value(audioConfig);
-
-		pugi::xml_node gameConfigNode	= root.child("Game");
-		GameConfig gameConfig			= { };
-
-		if (gameConfigNode)
-		{
-			gameConfig = parseGameConfig(gameConfigNode);
-
-			setReasonableDefaults(gameConfig);
-		}
-
-		m_gameConfigPromise.set_value(gameConfig);
+				return result;
+			}
+		);
 	}
 }

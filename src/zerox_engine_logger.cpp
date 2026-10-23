@@ -17,15 +17,12 @@ namespace ZeroX
 
     void EngineLogger::enqueueMessage(const std::string& message)
     {
-        m_transientQueue.push_back(message);
+        std::lock_guard<std::mutex> lock(m_messageMutex);
+        m_messageQueue.push_back(message);
     }
 
     void EngineLogger::processMessages()
     {
-        std::unique_lock<std::mutex> lock(m_messageMutex);
-        std::swap(m_transientQueue, m_messageQueue);
-        lock.unlock();
-
         m_processSemaphore.notify_one();
     }
 

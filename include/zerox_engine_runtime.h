@@ -2,7 +2,7 @@
 
 #include <render_frame_buffer.h>
 
-#include "zerox_context_loader.h"
+#include "zerox_engine_context.h"
 
 namespace ZeroX
 {
@@ -15,12 +15,11 @@ namespace ZeroX
         void load(const char* configPath);
 
     private:
-        void render(renderer::FrameBuffer* frameBuffer);
+        void render(IWindow* window, renderer::FrameBuffer* frameBuffer);
         bool reloadGameLibrary(const char* parentDirectory, const char* filename, uint64_t counter);
         void stopRendering();
 
-        std::unique_ptr<IWindow> m_window{ nullptr };
-        std::unique_ptr<ContextLoader> m_contextLoader{ nullptr };
+        std::unique_ptr<EngineContext> m_context{ nullptr };
 
         std::thread m_rendererThread;
         std::atomic<uint64_t> m_renderFrameIndex{ 0 };
