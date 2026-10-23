@@ -200,6 +200,8 @@ namespace ZeroX
             }
         });
 
+        monitorJoystickConnections();
+
         uint64_t frameIndex{ 0 };
         while (!window->shouldClose())
         {
