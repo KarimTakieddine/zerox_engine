@@ -81,7 +81,6 @@ namespace ZeroX
     
         std::thread m_executionThread;
         std::mutex m_messageMutex;
-        std::deque<std::string> m_transientQueue;
         std::deque<std::string> m_messageQueue;
         std::condition_variable m_processSemaphore;
         std::atomic<bool> m_shouldRun{ true };

@@ -4,6 +4,8 @@ namespace ZeroX
 {
     GameLibraryWatcher::~GameLibraryWatcher()
     {
+        stopWatching();
+
         if (m_monitoringThread.joinable())
         {
             m_monitoringThread.join();
@@ -32,6 +34,11 @@ namespace ZeroX
         {
             m_monitoringThread.join();
         }
+    }
+
+    const platform::FileWriteEvent& GameLibraryWatcher::getFileWriteEvent() const
+    {
+        return m_fileWriteEvent;
     }
 
     uint64_t GameLibraryWatcher::getChangeCounter() const

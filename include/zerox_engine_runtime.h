@@ -2,33 +2,24 @@
 
 #include <render_frame_buffer.h>
 
-#include "game_library.h"
-#include "game_library_watcher.h"
-#include "zerox_audio_player.h"
-#include "zerox_engine_config.h"
-#include "zerox_window.h"
+#include "zerox_engine_context.h"
 
 namespace ZeroX
 {
     class EngineRuntime
     {
     public:
-        EngineRuntime(const WindowConfig& config);
+        EngineRuntime();
         ~EngineRuntime();
 
-        void run(const GameConfig& gameConfig, const AudioConfig& audioConfig);
-        void stopRendering();
+        void load(const char* configPath);
 
     private:
-        void render(renderer::FrameBuffer* frameBuffer);
-        bool initializeGameLibrary(const GameConfig& config);
-        bool startWatchingGameLibrary(const GameConfig& config);
-        bool reloadGameLibrary(const GameConfig& config, uint64_t changeCounter);
+        void render(IWindow* window, renderer::FrameBuffer* frameBuffer);
+        bool reloadGameLibrary(GameLibrary* gameLibrary, const char* parentDirectory, const char* filename, uint64_t counter);
+        void stopRendering();
 
-        std::unique_ptr<IWindow> m_window                       { nullptr };
-        std::unique_ptr<IAudioPlayer> m_audioPlayer             { nullptr };
-        std::unique_ptr<GameLibraryWatcher> m_gameLibraryWatcher{ nullptr };
-        std::unique_ptr<GameLibrary> m_gameLibrary              { nullptr };
+        std::unique_ptr<EngineContext> m_context{ nullptr };
 
         std::thread m_rendererThread;
         std::atomic<uint64_t> m_renderFrameIndex{ 0 };

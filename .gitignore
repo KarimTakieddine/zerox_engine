@@ -2,5 +2,6 @@
 **/build/
 **/.vs/
 **/bin/
+/config/
 
 **/*Zone\.Identifier

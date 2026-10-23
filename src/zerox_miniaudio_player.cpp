@@ -68,21 +68,19 @@ namespace ZeroX
             return false;
         }
 
-        for (size_t i = 0; i < config.soundCount; ++i)
+        for (const auto& soundConfig : config.sounds)
         {
-            const auto* soundConfig = config.sounds + i;
-
             auto sound = std::make_unique<MiniAudioSound>();
 
             bool result = false;
 
-            switch (soundConfig->type)
+            switch (soundConfig.type)
             {
             case SoundType::BGM:
-                result = sound->initialize(soundConfig->file, soundConfig->type, &m_engine, &m_bgmGroup);
+                result = sound->initialize(soundConfig.path.c_str(), soundConfig.type, &m_engine, &m_bgmGroup);
                 break;
             case SoundType::SOUND_EFFECT:
-                result = sound->initialize(soundConfig->file, soundConfig->type, &m_engine, &m_sfxGroup);
+                result = sound->initialize(soundConfig.path.c_str(), soundConfig.type, &m_engine, &m_sfxGroup);
                 break;
             default:
                 break;
@@ -93,7 +91,7 @@ namespace ZeroX
                 return result;
             }
 
-            m_sounds.emplace(std::make_pair(getFileBasename(soundConfig->file), std::move(sound)));
+            m_sounds.emplace(std::make_pair(getFileBasename(soundConfig.path.c_str()), std::move(sound)));
         }
 
         return true;
