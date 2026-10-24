@@ -4,54 +4,58 @@
 
 namespace
 {
+    using ZeroXBridge::Button;
+    using ZeroXBridge::KeyState;
+    using ZeroXBridge::GamePad;
+
     // TODO(Karim): Unordered map?
 
-    int getGLFWButtonCode(ZeroX::Button button)
+    int getGLFWButtonCode(Button button)
     {
         int result = -1;
 
         switch (button)
         {
-        case ZeroX::Button::BUTTON_A:
+        case Button::BUTTON_A:
             result = GLFW_GAMEPAD_BUTTON_A;
             break;
-        case ZeroX::Button::BUTTON_B:
+        case Button::BUTTON_B:
             result = GLFW_GAMEPAD_BUTTON_B;
             break;
-        case ZeroX::Button::BUTTON_X:
+        case Button::BUTTON_X:
             result = GLFW_GAMEPAD_BUTTON_X;
             break;
-        case ZeroX::Button::BUTTON_Y:
+        case Button::BUTTON_Y:
             result = GLFW_GAMEPAD_BUTTON_Y;
             break;
-        case ZeroX::Button::BUTTON_LB:
+        case Button::BUTTON_LB:
             result = GLFW_GAMEPAD_BUTTON_LEFT_BUMPER;
             break;
-        case ZeroX::Button::BUTTON_RB:
+        case Button::BUTTON_RB:
             result = GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER;
             break;
-        case ZeroX::Button::BUTTON_START:
+        case Button::BUTTON_START:
             result = GLFW_GAMEPAD_BUTTON_START;
             break;
-        case ZeroX::Button::BUTTON_BACK:
+        case Button::BUTTON_BACK:
             result = GLFW_GAMEPAD_BUTTON_BACK;
             break;
-        case ZeroX::Button::LEFT_CLICK:
+        case Button::LEFT_CLICK:
             result = GLFW_GAMEPAD_BUTTON_LEFT_THUMB;
             break;
-        case ZeroX::Button::RIGHT_CLICK:
+        case Button::RIGHT_CLICK:
             result = GLFW_GAMEPAD_BUTTON_RIGHT_THUMB;
             break;
-        case ZeroX::Button::BUTTON_DPAD_UP:
+        case Button::BUTTON_DPAD_UP:
             result = GLFW_GAMEPAD_BUTTON_DPAD_UP;
             break;
-        case ZeroX::Button::BUTTON_DPAD_DOWN:
+        case Button::BUTTON_DPAD_DOWN:
             result = GLFW_GAMEPAD_BUTTON_DPAD_DOWN;
             break;
-        case ZeroX::Button::BUTTON_DPAD_LEFT:
+        case Button::BUTTON_DPAD_LEFT:
             result = GLFW_GAMEPAD_BUTTON_DPAD_LEFT;
             break;
-        case ZeroX::Button::BUTTON_DPAD_RIGHT:
+        case Button::BUTTON_DPAD_RIGHT:
             result = GLFW_GAMEPAD_BUTTON_DPAD_RIGHT;
             break;
         default:
@@ -86,11 +90,11 @@ namespace
     void updateButtonState(uint64_t* packedState, const GLFWgamepadstate& state)
     {
         for (
-            uint8_t button = static_cast<uint8_t>(ZeroX::Button::BUTTON_A);
-            button < static_cast<uint8_t>(ZeroX::Button::BUTTON_LAST);
+            uint8_t button = static_cast<uint8_t>(Button::BUTTON_A);
+            button < static_cast<uint8_t>(Button::BUTTON_LAST);
             ++button)
         {
-            const int glfwButton = ::getGLFWButtonCode(static_cast<ZeroX::Button>(button));
+            const int glfwButton = ::getGLFWButtonCode(static_cast<Button>(button));
 
             if (glfwButton < 0)
             {
@@ -102,38 +106,38 @@ namespace
             const uint64_t mask = 15ULL << ( button * 4 );
 
             const uint64_t currentState = ( *packedState ) & mask;
-            ZeroX::KeyState nextState   = static_cast<ZeroX::KeyState>(currentState >> ( button * 4 ));
+            KeyState nextState          = static_cast<KeyState>(currentState >> ( button * 4 ));
 
             switch (buttonState)
             {
             case GLFW_PRESS:
             {
-                if ((nextState & ZeroX::KeyState::PRESSED) == ZeroX::KeyState::PRESSED)
+                if ((nextState & KeyState::PRESSED) == KeyState::PRESSED)
                 {
-                    nextState &= ~ZeroX::KeyState::PRESSED_THIS_FRAME;
+                    nextState &= ~KeyState::PRESSED_THIS_FRAME;
                 }
                 else
                 {
-                    nextState |= ZeroX::KeyState::PRESSED_THIS_FRAME;
+                    nextState |= KeyState::PRESSED_THIS_FRAME;
                 }
 
-                nextState |= ZeroX::KeyState::PRESSED;
-                nextState &= ~( ZeroX::KeyState::RELEASED | ZeroX::KeyState::RELEASED_THIS_FRAME );
+                nextState |= KeyState::PRESSED;
+                nextState &= ~( KeyState::RELEASED | KeyState::RELEASED_THIS_FRAME );
                 break;
             }
             case GLFW_RELEASE:
             {
-                if ((nextState & ZeroX::KeyState::RELEASED) == ZeroX::KeyState::RELEASED)
+                if ((nextState & KeyState::RELEASED) == KeyState::RELEASED)
                 {
-                    nextState &= ~ZeroX::KeyState::RELEASED_THIS_FRAME;
+                    nextState &= ~KeyState::RELEASED_THIS_FRAME;
                 }
                 else
                 {
-                    nextState |= ZeroX::KeyState::RELEASED_THIS_FRAME;
+                    nextState |= KeyState::RELEASED_THIS_FRAME;
                 }
 
-                nextState |= ZeroX::KeyState::RELEASED;
-                nextState &= ~( ZeroX::KeyState::PRESSED | ZeroX::KeyState::PRESSED_THIS_FRAME );
+                nextState |= KeyState::RELEASED;
+                nextState &= ~( KeyState::PRESSED | KeyState::PRESSED_THIS_FRAME );
                 break;
             }
             default:
@@ -147,7 +151,7 @@ namespace
         }
     }
 
-    void updateGamePad(ZeroX::GamePad* gamePad, const GLFWgamepadstate& state, const float* axes, int axesCount)
+    void updateGamePad(GamePad* gamePad, const GLFWgamepadstate& state, const float* axes, int axesCount)
     {
         updateButtonState(&gamePad->packedState, state);
 

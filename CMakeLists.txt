@@ -46,6 +46,9 @@ elseif (LINUX)
     find_package(glfw3 3.4 REQUIRED)
 endif()
 
+set(zerox_memory_bridge_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../zerox_memory_bridge/install/share/cmake/zerox_memory_bridge")
+find_package(zerox_memory_bridge CONFIG REQUIRED)
+
 add_subdirectory(${PUGIXML_DIR})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -57,7 +60,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${MEMORY_READER_DIR}/include
     ${PUGIXML_DIR}/src)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE zerox_engine_platform zerox_engine_renderer glfw pugixml::static)
+target_link_libraries(${PROJECT_NAME} PRIVATE zerox_engine_platform zerox_engine_renderer zerox_memory_bridge::zerox_memory_bridge glfw pugixml::static)
 
 add_custom_command(TARGET Assets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${AUDIO_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${AUDIO_DIR}

@@ -7,6 +7,8 @@
 #include <shader.h>
 #include <texture.h>
 
+#include <zerox_render_descriptor.h>
+
 #include "render_command_generator.h"
 #include "zerox_engine_input.h"
 #include "zerox_engine_logger.h"
@@ -58,20 +60,24 @@ namespace
         return gameLibrary->load(destinationPath.string().c_str());
     }
 
+    using ZeroXBridge::RenderDescriptor;
+    using ZeroXBridge::EntitySection;
+    using ZeroXBridge::EntitySectionFlags;
+    using ZeroXBridge::EntitySectionType;
+
     renderer::Frame buildRenderFrame(BumpAllocator<16>* gameAllocator, const ZeroX::RenderDescriptor& descriptor)
     {
         std::byte* gameMemory = static_cast<std::byte*>(gameAllocator->peek());
 
         renderer::Frame result;
 
-        auto* entitySectionData = descriptor.entitySectionData;
-        MemoryCursor<16> cursor;
+        EntitySection* entitySections = descriptor.entitySections;
 
-        for (uint64_t i = 0; i < descriptor.sectionCount; ++i)
+        for (uint64_t i = 0; i < descriptor.entitySectionCount; ++i)
         {
-            auto* entitySection = reinterpret_cast<ZeroX::EntitySection*>(entitySectionData + cursor.getOffset());
+            EntitySection* entitySection = entitySections + i;
 
-            ZeroX::EntitySectionFlags& sectionFlags = entitySection->flags;
+            EntitySectionFlags& sectionFlags = entitySection->flags;
 
             // TODO(Karim): This double switch needs refactoring. Perhaps write a function to pre-populate indices based on desired mappings?
             
@@ -79,9 +85,9 @@ namespace
 
             switch (entitySection->type)
             {
-            case ZeroX::EntitySectionType::SPRITE:
+            case EntitySectionType::SPRITE:
             {
-                if ( ( sectionFlags & ZeroX::EntitySectionFlags::ALLOCATE_BATCH ) == ZeroX::EntitySectionFlags::ALLOCATE_BATCH )
+                if ( ( sectionFlags & EntitySectionFlags::ALLOCATE_BATCH ) == EntitySectionFlags::ALLOCATE_BATCH )
                 {
                     renderer::Command command{ .type = renderer::CommandType::ALLOCATE_RENDER_BATCH };
 
@@ -99,7 +105,7 @@ namespace
 
                     result.renderCommands.push_back(command);
 
-                    sectionFlags &= ~ZeroX::EntitySectionFlags::ALLOCATE_BATCH;
+                    sectionFlags &= ~EntitySectionFlags::ALLOCATE_BATCH;
                 }
 
                 break;
@@ -108,17 +114,15 @@ namespace
                 break;
             }
 
-            cursor.step<ZeroX::EntitySection>();
-
             for (uint64_t j = 0; j < descriptorCount; ++j)
             {
-                const auto* fetchDescriptor = entitySection->fetchDescriptors + j;
+                const auto* readDescriptor = entitySection->readDescriptors + j;
 
-                const renderer::RenderEntity* renderEntity = reinterpret_cast<const renderer::RenderEntity*>(gameMemory + fetchDescriptor->offset + fetchDescriptor->stride);
+                const renderer::RenderEntity* renderEntity = reinterpret_cast<const renderer::RenderEntity*>(gameMemory + readDescriptor->start + readDescriptor->offset);
 
                 switch (entitySection->type)
                 {
-                case ZeroX::EntitySectionType::SPRITE:
+                case EntitySectionType::SPRITE:
                 {
                     result.renderCommands.push_back(ZeroX::generateRenderCommand(renderEntity->transform, 0, j));
                     result.renderCommands.push_back(ZeroX::generateRenderCommand(renderEntity->material, 0, j));
@@ -128,8 +132,6 @@ namespace
                     break;
                 }
             }
-
-            cursor.step_array<ZeroX::EntityFetchDescriptor>(descriptorCount);
         }
 
         return result;

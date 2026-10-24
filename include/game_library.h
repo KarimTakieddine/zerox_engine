@@ -5,7 +5,7 @@
 #include <bump_allocator.hpp>
 #include <platform.h>
 
-#include "zerox_render_descriptor.h"
+#include <zerox_render_descriptor.h>
 
 #if defined(_WIN32) || defined(_WIN64)
     #define ZEROX_CDECL __cdecl
@@ -15,6 +15,8 @@
 
 namespace ZeroX
 {
+    using ZeroXBridge::RenderDescriptor;
+
     constexpr size_t GAME_MEMORY_ALIGNMENT = 16;
 
     using GameAllocator = BumpAllocator<GAME_MEMORY_ALIGNMENT>;
