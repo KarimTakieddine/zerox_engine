@@ -24,7 +24,6 @@ add_subdirectory(${RENDERER_DIR})
 list(APPEND SOURCES
     ${SRC_DIR}/game_library.cpp
     ${SRC_DIR}/game_library_watcher.cpp
-    ${SRC_DIR}/render_command_generator.cpp
     ${SRC_DIR}/zerox_miniaudio_player.cpp
     ${SRC_DIR}/zerox_engine_logger.cpp
     ${SRC_DIR}/zerox_engine_runtime.cpp

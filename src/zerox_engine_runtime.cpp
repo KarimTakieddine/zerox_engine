@@ -10,10 +10,10 @@
 #include <zerox_render_descriptor.h>
 
 #include "config/zerox_config_loader.h"
-#include "render_command_generator.h"
 #include "zerox_engine_input.h"
 #include "zerox_engine_logger.h"
 #include "zerox_engine_runtime.h"
+#include "zerox_frame_builder.h"
 #include "zerox_glfw_window.h"
 #include "zerox_memory_map.h"
 #include "zerox_miniaudio_player.h"
@@ -60,83 +60,6 @@ namespace
         }
 
         return gameLibrary->load(destinationPath.string().c_str());
-    }
-
-    using ZeroXBridge::RenderDescriptor;
-    using ZeroXBridge::EntitySection;
-    using ZeroXBridge::EntitySectionFlags;
-    using ZeroXBridge::EntitySectionType;
-
-    renderer::Frame buildRenderFrame(BumpAllocator<16>* gameAllocator, const ZeroX::RenderDescriptor& descriptor)
-    {
-        std::byte* gameMemory = static_cast<std::byte*>(gameAllocator->peek());
-
-        renderer::Frame result;
-
-        EntitySection* entitySections = descriptor.entitySections;
-
-        for (uint64_t i = 0; i < descriptor.entitySectionCount; ++i)
-        {
-            EntitySection* entitySection = entitySections + i;
-
-            EntitySectionFlags& sectionFlags = entitySection->flags;
-
-            // TODO(Karim): This double switch needs refactoring. Perhaps write a function to pre-populate indices based on desired mappings?
-            
-            const uint64_t descriptorCount = entitySection->descriptorCount;
-
-            switch (entitySection->type)
-            {
-            case EntitySectionType::SPRITE:
-            {
-                if ( ( sectionFlags & EntitySectionFlags::ALLOCATE_BATCH ) == EntitySectionFlags::ALLOCATE_BATCH )
-                {
-                    renderer::Command command{ .type = renderer::CommandType::ALLOCATE_RENDER_BATCH };
-
-                    // TODO(Karim): Maybe perform a lookup here to avoid magic numbers?
-                    const size_t shaderProgramIndex = 1;
-                    const size_t vertexArrayIndex   = 0;
-                    const size_t locationsIndex     = 1;
-                    const size_t meshIndex          = 0;
-
-                    std::memcpy(command.data, &shaderProgramIndex, sizeof(size_t));
-                    std::memcpy(command.data + sizeof(size_t), &vertexArrayIndex, sizeof(size_t));
-                    std::memcpy(command.data + 2 * sizeof(size_t), &locationsIndex, sizeof(size_t));
-                    std::memcpy(command.data + 3 * sizeof(size_t), &meshIndex, sizeof(size_t));
-                    std::memcpy(command.data + 4 * sizeof(size_t), &descriptorCount, sizeof(size_t));
-
-                    result.renderCommands.push_back(command);
-
-                    sectionFlags &= ~EntitySectionFlags::ALLOCATE_BATCH;
-                }
-
-                break;
-            }
-            default:
-                break;
-            }
-
-            for (uint64_t j = 0; j < descriptorCount; ++j)
-            {
-                const auto* readDescriptor = entitySection->readDescriptors + j;
-
-                const renderer::RenderEntity* renderEntity = reinterpret_cast<const renderer::RenderEntity*>(gameMemory + readDescriptor->start + readDescriptor->offset);
-
-                switch (entitySection->type)
-                {
-                case EntitySectionType::SPRITE:
-                {
-                    result.renderCommands.push_back(ZeroX::generateRenderCommand(renderEntity->transform, 0, j));
-                    result.renderCommands.push_back(ZeroX::generateRenderCommand(renderEntity->material, 0, j));
-                    break;
-                }
-                default:
-                    break;
-                }
-            }
-        }
-
-        return result;
     }
 }
 
@@ -265,9 +188,10 @@ namespace ZeroX
             gameLibrary->getFunctions().updateGame(&gameAllocator, frameDeltaTime);
            
             const RenderDescriptor renderDescriptor = gameLibrary->getFunctions().initRenderDescriptor(&gameAllocator);
-            const renderer::Frame renderFrame       = ::buildRenderFrame(&gameAllocator, renderDescriptor);
+            FrameBuilder frameBuilder;
+            frameBuilder.processRenderDescriptor(reinterpret_cast<const std::byte*>(gameAllocator.peek()), graphicsMemoryMap, renderDescriptor);
 
-            while (!renderFrameBuffer.push(renderFrame))
+            while (!renderFrameBuffer.push(frameBuilder.getFrame()))
             {
 
             }
