@@ -7,6 +7,7 @@
 #include <frustum.h>
 #include <renderer.hpp>
 #include <shader.h>
+#include <texture_data.h>
 #include <texture.h>
 
 namespace ZeroX
@@ -28,6 +29,12 @@ namespace ZeroX
 		size_t programIndex					{ 0 };
 	};
 
+	struct TextureArrayConfig
+	{
+		std::vector<const char*> textureFiles	{ };
+		renderer::TextureData data				{ };
+	};
+
 	class GraphicsConfig
 	{
 	public:
@@ -45,6 +52,11 @@ namespace ZeroX
 		void addTexture(const renderer::Texture& texture);
 		const renderer::Texture& getTexture(size_t index) const;
 		const std::vector<renderer::Texture>& getTextures() const;
+
+		void setTextureArrayCount(size_t count);
+		void addTextureArray(const TextureArrayConfig& config);
+		const TextureArrayConfig& getTextureArray(size_t index) const;
+		const std::vector<TextureArrayConfig>& getTextureArrays() const;
 
 		void setCameraUniformNames(const std::vector<const char*>& names);
 		const std::vector<const char*>& getCameraUniformNames() const;
@@ -70,6 +82,7 @@ namespace ZeroX
 		std::vector<MeshConfig> m_meshes;
 		std::vector<ShaderProgramConfig> m_shaderPrograms;
 		std::vector<renderer::Texture> m_textures;
+		std::vector<TextureArrayConfig> m_textureArrays;
 		std::vector<renderer::ShaderLocationsLink> m_locationsLinks;
 		std::vector<const char*> m_cameraUniformNames;
 		std::string m_cameraUniformBuffer;

@@ -16,8 +16,9 @@ namespace ZeroX
 	{
 		UNKNOWN		= 0,
 		UNLIT_COLOR	= 1,
-		SPRITE		= 2,
-		COLLIDER	= 3
+		BACKGROUND	= 2,
+		SPRITE		= 3,
+		COLLIDER	= 4
 	};
 
 	enum class VertexArrayType : uint8_t

@@ -1,0 +1,29 @@
+#version 450 core
+
+in vec3 position;
+in vec3 color;
+in vec2 uv;
+
+uniform CameraMatrices
+{
+    mat4 cameraProjection;
+    mat4 cameraLocalToWorld;
+    mat4 cameraLocalRotation;
+    mat4 cameraView;
+};
+
+uniform mat4 transform[3];
+
+out vec3 vertexColor;
+out vec2 vertexUV;
+
+void main() {
+	mat4 cameraTransform		= cameraLocalToWorld * cameraLocalRotation;
+	mat4 cameraViewTransform    = inverse(cameraTransform) * cameraView;
+    mat4 model                  = transform[0] * transform[1] * transform[2];
+
+    gl_Position = cameraProjection * cameraViewTransform * model * vec4(position, 1.0);
+
+    vertexColor = color;
+    vertexUV    = uv;
+}

@@ -93,12 +93,19 @@ namespace ZeroX
 
 				config.setVertexArrayCount(2);
 
-				config.setShaderProgramCount(3);
+				config.setShaderProgramCount(4);
 
 				ShaderProgramConfig unlitColorProgram = {
 					.shaders = {
 						{ "./shaders/unlit_color/vertex.slh", renderer::Shader::Type::VERTEX },
 						{ "./shaders/unlit_color/fragment.slh", renderer::Shader::Type::FRAGMENT }
+					}
+				};
+
+				ShaderProgramConfig backgroundProgram = {
+					.shaders = {
+						{ "./shaders/background/vertex.slh", renderer::Shader::Type::VERTEX },
+						{ "./shaders/background/fragment.slh", renderer::Shader::Type::FRAGMENT }
 					}
 				};
 
@@ -117,6 +124,7 @@ namespace ZeroX
 				};
 
 				config.addShaderProgram(unlitColorProgram);
+				config.addShaderProgram(backgroundProgram);
 				config.addShaderProgram(spriteProgram);
 				config.addShaderProgram(colliderProgram);
 
@@ -145,30 +153,50 @@ namespace ZeroX
 				config.setShaderLocationsLinks({
 					{ .locationsIndex = 0, .shaderProgramIndex = 0 },
 					{ .locationsIndex = 1, .shaderProgramIndex = 1 },
-					{ .locationsIndex = 2, .shaderProgramIndex = 2 }
+					{ .locationsIndex = 2, .shaderProgramIndex = 2 },
+					{ .locationsIndex = 3, .shaderProgramIndex = 3 }
 				});
 
+				config.setTextureCount(1);
 				renderer::Texture megaTexture = {
-					.path		= "./textures/the_mega_texture.png",
-					.wrapModeS	= renderer::WrapMode::CLAMP_TO_EDGE,
-					.wrapModeT	= renderer::WrapMode::CLAMP_TO_EDGE,
-					.minFilter	= renderer::Filter::NEAREST,
-					.magFilter	= renderer::Filter::NEAREST
+					.data = {
+						.wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
+						.wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
+						.minFilter = renderer::Filter::NEAREST,
+						.magFilter = renderer::Filter::NEAREST
+					},
+					.path = "./textures/the_mega_texture.png"
 				};
-
 				config.addTexture(megaTexture);
+
+				config.setTextureArrayCount(1);
+				TextureArrayConfig backgroundArrayConfig = {
+					.textureFiles = {
+						"./textures/test_background_0.png",
+						"./textures/test_background_1.png"
+					},
+					.data = {
+						.wrapModeS = renderer::WrapMode::REPEAT,
+						.wrapModeT = renderer::WrapMode::REPEAT,
+						.minFilter = renderer::Filter::LINEAR,
+						.magFilter = renderer::Filter::LINEAR
+					}
+				};
+				config.addTextureArray(backgroundArrayConfig);
 
 				MemoryMap memoryMap;
 
 				memoryMap.mapMesh(0, MeshType::QUAD);
-				memoryMap.mapShaderProgram(1, ShaderProgramType::SPRITE);
-				memoryMap.mapVertexArray(0, VertexArrayType::TEXTURED_QUAD);
-				memoryMap.mapLocationsDescriptor(1, ShaderProgramType::SPRITE);
-
 				memoryMap.mapMesh(1, MeshType::COLLIDER);
-				memoryMap.mapShaderProgram(2, ShaderProgramType::COLLIDER);
+
+				memoryMap.mapVertexArray(0, VertexArrayType::TEXTURED_QUAD);
 				memoryMap.mapVertexArray(1, VertexArrayType::COLLIDER);
-				memoryMap.mapLocationsDescriptor(2, ShaderProgramType::COLLIDER);
+
+				memoryMap.mapShaderProgram(2, ShaderProgramType::SPRITE);
+				memoryMap.mapLocationsDescriptor(2, ShaderProgramType::SPRITE);
+
+				memoryMap.mapShaderProgram(3, ShaderProgramType::COLLIDER);
+				memoryMap.mapLocationsDescriptor(3, ShaderProgramType::COLLIDER);
 
 				return std::make_pair(config, memoryMap);
 			}
