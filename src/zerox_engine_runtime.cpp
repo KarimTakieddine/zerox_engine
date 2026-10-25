@@ -3,12 +3,6 @@
 
 #include <glad/gl.h>
 
-#include <renderer.hpp>
-#include <shader.h>
-#include <texture.h>
-
-#include <zerox_render_descriptor.h>
-
 #include "config/zerox_config_loader.h"
 #include "zerox_engine_input.h"
 #include "zerox_engine_logger.h"
