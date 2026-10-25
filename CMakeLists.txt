@@ -33,8 +33,9 @@ list(APPEND SOURCES
     ${SRC_DIR}/config/zerox_config_loader.cpp
     ${SRC_DIR}/config/zerox_config_parser.cpp
     ${SRC_DIR}/config/zerox_graphics_config.cpp
-    ${SRC_DIR}/zerox_frame_builder.cpp
     ${SRC_DIR}/zerox_engine_context.cpp
+    ${SRC_DIR}/zerox_frame_builder.cpp
+    ${SRC_DIR}/zerox_memory_map.cpp
     ${MINIAUDIO_DIR}/miniaudio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
 

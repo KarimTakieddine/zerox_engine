@@ -15,6 +15,7 @@
 #include "zerox_engine_logger.h"
 #include "zerox_engine_runtime.h"
 #include "zerox_glfw_window.h"
+#include "zerox_memory_map.h"
 #include "zerox_miniaudio_player.h"
 #include "zerox_time.h"
 
@@ -152,7 +153,7 @@ namespace ZeroX
     {
         AsyncLoadPromise loadPromise;
 
-        auto graphicsConfigFuture       = loadGraphicsConfig();
+        auto graphicsFuture             = loadGraphicsConfig();
         auto windowFuture               = loadPromise.window.get_future();
         auto audioPlayerFuture          = loadPromise.audioPlayer.get_future();
         auto gameLibraryFuture          = loadPromise.gameLibrary.get_future();
@@ -165,10 +166,12 @@ namespace ZeroX
 
         renderer::FrameBuffer renderFrameBuffer;
         renderFrameBuffer.allocate(64);
-        const GraphicsConfig graphicsConfig = graphicsConfigFuture.get();
+        
+        auto graphicsPair = graphicsFuture.get();
+
         m_rendererThread = std::thread(
             &EngineRuntime::render,
-            this, graphicsConfig, window, &renderFrameBuffer);
+            this, graphicsPair.first, window, &renderFrameBuffer);
 
         GameLibrary* gameLibrary = gameLibraryFuture.get();
 
@@ -209,6 +212,9 @@ namespace ZeroX
         monitorJoystickConnections();
 
         uint64_t frameIndex{ 0 };
+
+        const MemoryMap& graphicsMemoryMap = graphicsPair.second;
+
         while (!window->shouldClose())
         {
             window->processEvents();
@@ -358,7 +364,7 @@ namespace ZeroX
             .shaderLocationsLinks       = shaderLocationsLinks.data(),
             .meshCount                  = meshes.size(),
             .bufferCount                = 3,
-            .vertexArrayCount           = 1,
+            .vertexArrayCount           = config.getVertexArrayCount(),
             .textureCount               = textures.size(),
             .shaderCount                = shaders.size(),
             .shaderProgramCount         = config.getShaderPrograms().size(),

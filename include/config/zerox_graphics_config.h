@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include <eye.h>
@@ -12,22 +11,9 @@
 
 namespace ZeroX
 {
-	enum class ShaderProgramType : uint8_t
-	{
-		UNKNOWN		= 0,
-		UNLIT_COLOR	= 1,
-		SPRITE		= 2
-	};
-
 	struct ShaderProgramConfig
 	{
 		std::vector<renderer::Shader> shaders;
-	};
-
-	enum class MeshType : uint8_t
-	{
-		UNKNOWN = 0,
-		QUAD	= 1
 	};
 
 	struct MeshConfig
@@ -75,6 +61,9 @@ namespace ZeroX
 		const renderer::Frustum& getCameraFrustum() const;
 		void setCameraFrustum(const renderer::Frustum& frustum);
 
+		void setVertexArrayCount(size_t count);
+		size_t getVertexArrayCount() const;
+
 		std::vector<ShaderCompileConfig> getShaderCompileSteps() const;
 
 	private:
@@ -86,5 +75,6 @@ namespace ZeroX
 		std::string m_cameraUniformBuffer;
 		renderer::Eye m_cameraEye;
 		renderer::Frustum m_cameraFrustum;
+		size_t m_vertexArrayCount{ 0 };
 	};
 }

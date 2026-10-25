@@ -135,6 +135,16 @@ namespace ZeroX
 		m_cameraFrustum = frustum;
 	}
 
+	void GraphicsConfig::setVertexArrayCount(size_t count)
+	{
+		m_vertexArrayCount = count;
+	}
+
+	size_t GraphicsConfig::getVertexArrayCount() const
+	{
+		return m_vertexArrayCount;
+	}
+
 	std::vector<ShaderCompileConfig> GraphicsConfig::getShaderCompileSteps() const
 	{
 		std::vector<ShaderCompileConfig> result;

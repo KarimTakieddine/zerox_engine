@@ -59,14 +59,14 @@ namespace ZeroX
 		);
 	}
 
-	std::future<GraphicsConfig> loadGraphicsConfig()
+	std::future<std::pair<GraphicsConfig, MemoryMap>> loadGraphicsConfig()
 	{
 		return std::async(
-			std::launch::async, []() -> GraphicsConfig {
+			std::launch::async, []() -> std::pair<GraphicsConfig, MemoryMap> {
 
-				GraphicsConfig result;
+				GraphicsConfig config;
 
-				result.setMeshCount(1);
+				config.setMeshCount(1);
 
 				MeshConfig quadMesh = {
 					.vertices = {
@@ -78,9 +78,11 @@ namespace ZeroX
 					.triangles = { 0, 2, 1, 0, 3, 2 }
 				};
 
-				result.addMesh(quadMesh);
+				config.addMesh(quadMesh);
 
-				result.setShaderProgramCount(2);
+				config.setVertexArrayCount(1);
+
+				config.setShaderProgramCount(2);
 
 				ShaderProgramConfig unlitColorProgram = {
 					.shaders = {
@@ -96,32 +98,32 @@ namespace ZeroX
 					}
 				};
 
-				result.addShaderProgram(unlitColorProgram);
-				result.addShaderProgram(spriteProgram);
+				config.addShaderProgram(unlitColorProgram);
+				config.addShaderProgram(spriteProgram);
 
-				result.setCameraEye({
+				config.setCameraEye({
 					.position	= glm::vec3{ 0.0f, 0.0f, 10.0f },
 					.target		= glm::vec3{ 0.0f, 0.0f, 0.0f },
 					.up			= glm::vec3{ 0.0f, 1.0f, 0.0f }
 				});
 
-				result.setCameraFrustum({
+				config.setCameraFrustum({
 					.fov        = 80.0f,
 					.aspect     = 1920.0f / 1080.0f,
 					.nearPlane  = 1.0f,
 					.farPlane   = 100.0f
 				});
 
-				result.setCameraUniformNames({
+				config.setCameraUniformNames({
 					"cameraProjection",
 					"cameraLocalToWorld",
 					"cameraLocalRotation",
 					"cameraView"
 				});
 
-				result.setCameraUniformBuffer("CameraMatrices");
+				config.setCameraUniformBuffer("CameraMatrices");
 
-				result.setShaderLocationsLinks({
+				config.setShaderLocationsLinks({
 					{ .locationsIndex = 0, .shaderProgramIndex = 0 },
 					{ .locationsIndex = 1, .shaderProgramIndex = 1 }
 				});
@@ -134,9 +136,15 @@ namespace ZeroX
 					.magFilter	= renderer::Filter::NEAREST
 				};
 
-				result.addTexture(megaTexture);
+				config.addTexture(megaTexture);
 
-				return result;
+				MemoryMap memoryMap;
+				memoryMap.mapMesh(0, MeshType::QUAD);
+				memoryMap.mapShaderProgram(1, ShaderProgramType::SPRITE);
+				memoryMap.mapVertexArray(0, VertexArrayType::VERTEX_COLORED_QUAD);
+				memoryMap.mapLocationsDescriptor(1, ShaderProgramType::SPRITE);
+
+				return std::make_pair(config, memoryMap);
 			}
 		);
 	}
