@@ -63,7 +63,7 @@ namespace ZeroX
 
 		for (uint64_t i = 0; i < descriptor.entitySectionCount; ++i)
 		{
-			processEntitySection(gameMemory, map, *(descriptor.entitySections + i), i);
+			processEntitySection(gameMemory, map, *( descriptor.entitySections + i ), i);
 		}
 	}
 
@@ -77,6 +77,7 @@ namespace ZeroX
 		switch (section.type)
 		{
 		case EntitySectionType::SPRITE:
+		case EntitySectionType::COLLIDER:
 			processSpriteSection(gameMemory, section, index);
 			break;
 		default:
@@ -98,7 +99,7 @@ namespace ZeroX
 			m_frame.renderCommands.push_back(
 				::buildAllocateBatchCommand(
 					map.getShaderProgramIndex(ShaderProgramType::SPRITE),
-					map.getVertexArrayIndex(VertexArrayType::VERTEX_COLORED_QUAD),
+					map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
 					map.getLocationsDescriptorIndex(ShaderProgramType::SPRITE),
 					map.getMeshIndex(MeshType::QUAD),
 					section.descriptorCount,
@@ -108,6 +109,20 @@ namespace ZeroX
 			section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
 
 			break;
+		}
+		case EntitySectionType::COLLIDER:
+		{
+			m_frame.renderCommands.push_back(
+				::buildAllocateBatchCommand(
+					map.getShaderProgramIndex(ShaderProgramType::COLLIDER),
+					map.getVertexArrayIndex(VertexArrayType::COLLIDER),
+					map.getLocationsDescriptorIndex(ShaderProgramType::COLLIDER),
+					map.getMeshIndex(MeshType::COLLIDER),
+					section.descriptorCount,
+					DrawMode::LINES
+				));
+
+			section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
 		}
 		default:
 			break;

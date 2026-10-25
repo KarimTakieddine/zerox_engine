@@ -7,21 +7,24 @@ namespace ZeroX
 {
 	enum class MeshType : uint8_t
 	{
-		UNKNOWN = 0,
-		QUAD	= 1
+		UNKNOWN		= 0,
+		QUAD		= 1,
+		COLLIDER	= 2
 	};
 
 	enum class ShaderProgramType : uint8_t
 	{
 		UNKNOWN		= 0,
 		UNLIT_COLOR	= 1,
-		SPRITE		= 2
+		SPRITE		= 2,
+		COLLIDER	= 3
 	};
 
 	enum class VertexArrayType : uint8_t
 	{
-		UNKNOWN				= 0,
-		VERTEX_COLORED_QUAD	= 1
+		UNKNOWN			= 0,
+		TEXTURED_QUAD	= 1,
+		COLLIDER		= 2
 	};
 
 	class MemoryMap

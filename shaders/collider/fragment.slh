@@ -1,0 +1,11 @@
+#version 450 core
+
+in vec3 vertexColor;
+
+uniform vec4 materialColor;
+
+out vec4 oColor;
+
+void main() {
+    oColor = materialColor;
+}

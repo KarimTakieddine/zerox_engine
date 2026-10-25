@@ -11,6 +11,7 @@ namespace ZeroX
 	using ZeroXBridge::EntitySection;
 	using ZeroXBridge::EntitySectionFlags;
 	using ZeroXBridge::EntitySectionType;
+	using ZeroXBridge::EntityReadDescriptor;
 	using ZeroXBridge::RenderDescriptor;
 
 	class FrameBuilder

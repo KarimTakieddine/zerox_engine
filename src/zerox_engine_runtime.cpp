@@ -281,7 +281,7 @@ namespace ZeroX
             .shaderCompileSteps         = shaderCompileSteps.data(),
             .shaderLocationsLinks       = shaderLocationsLinks.data(),
             .meshCount                  = meshes.size(),
-            .bufferCount                = 3,
+            .bufferCount                = 5,
             .vertexArrayCount           = config.getVertexArrayCount(),
             .textureCount               = textures.size(),
             .shaderCount                = shaders.size(),

@@ -78,11 +78,22 @@ namespace ZeroX
 					.triangles = { 0, 2, 1, 0, 3, 2 }
 				};
 
+				MeshConfig colliderMesh = {
+					.vertices = {
+						{ { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } },
+						{ { -0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
+						{ { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } },
+						{ { 0.5f, -0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
+					},
+					.triangles = { 0, 1, 1, 2, 2, 3, 3, 0 }
+				};
+
 				config.addMesh(quadMesh);
+				config.addMesh(colliderMesh);
 
-				config.setVertexArrayCount(1);
+				config.setVertexArrayCount(2);
 
-				config.setShaderProgramCount(2);
+				config.setShaderProgramCount(3);
 
 				ShaderProgramConfig unlitColorProgram = {
 					.shaders = {
@@ -98,8 +109,16 @@ namespace ZeroX
 					}
 				};
 
+				ShaderProgramConfig colliderProgram = {
+					.shaders = {
+						{ "./shaders/collider/vertex.slh", renderer::Shader::Type::VERTEX },
+						{ "./shaders/collider/fragment.slh", renderer::Shader::Type::FRAGMENT }
+					}
+				};
+
 				config.addShaderProgram(unlitColorProgram);
 				config.addShaderProgram(spriteProgram);
+				config.addShaderProgram(colliderProgram);
 
 				config.setCameraEye({
 					.position	= glm::vec3{ 0.0f, 0.0f, 10.0f },
@@ -125,7 +144,8 @@ namespace ZeroX
 
 				config.setShaderLocationsLinks({
 					{ .locationsIndex = 0, .shaderProgramIndex = 0 },
-					{ .locationsIndex = 1, .shaderProgramIndex = 1 }
+					{ .locationsIndex = 1, .shaderProgramIndex = 1 },
+					{ .locationsIndex = 2, .shaderProgramIndex = 2 }
 				});
 
 				renderer::Texture megaTexture = {
@@ -139,10 +159,16 @@ namespace ZeroX
 				config.addTexture(megaTexture);
 
 				MemoryMap memoryMap;
+
 				memoryMap.mapMesh(0, MeshType::QUAD);
 				memoryMap.mapShaderProgram(1, ShaderProgramType::SPRITE);
-				memoryMap.mapVertexArray(0, VertexArrayType::VERTEX_COLORED_QUAD);
+				memoryMap.mapVertexArray(0, VertexArrayType::TEXTURED_QUAD);
 				memoryMap.mapLocationsDescriptor(1, ShaderProgramType::SPRITE);
+
+				memoryMap.mapMesh(1, MeshType::COLLIDER);
+				memoryMap.mapShaderProgram(2, ShaderProgramType::COLLIDER);
+				memoryMap.mapVertexArray(1, VertexArrayType::COLLIDER);
+				memoryMap.mapLocationsDescriptor(2, ShaderProgramType::COLLIDER);
 
 				return std::make_pair(config, memoryMap);
 			}
