@@ -1,3 +1,4 @@
+#include <render_batch.h>
 #include <render_entity.h>
 #include <cstring>
 
@@ -7,16 +8,18 @@ namespace
 {
 	using renderer::Command;
 	using renderer::CommandType;
+	using renderer::DrawMode;
 
-	Command buildAllocateBatchCommand(size_t shaderProgramIndex, size_t vertexArrayIndex, size_t locationsIndex, size_t meshIndex, size_t entityCount)
+	Command buildAllocateBatchCommand(size_t shaderProgramIndex, size_t vertexArrayIndex, size_t locationsIndex, size_t meshIndex, size_t entityCount, DrawMode drawMode)
 	{
 		Command command{ .type = CommandType::ALLOCATE_RENDER_BATCH };
 
 		std::memcpy(command.data, &shaderProgramIndex, sizeof(size_t));
 		std::memcpy(command.data + sizeof(size_t), &vertexArrayIndex, sizeof(size_t));
-		std::memcpy(command.data + 2 * sizeof(size_t), &locationsIndex, sizeof(size_t));
-		std::memcpy(command.data + 3 * sizeof(size_t), &meshIndex, sizeof(size_t));
-		std::memcpy(command.data + 4 * sizeof(size_t), &entityCount, sizeof(size_t));
+		std::memcpy(command.data + 2 * sizeof(size_t), &locationsIndex, sizeof(uint64_t));
+		std::memcpy(command.data + 2 * sizeof(size_t) + sizeof(uint64_t), &meshIndex, sizeof(size_t));
+		std::memcpy(command.data + 3 * sizeof(size_t) + sizeof(uint64_t), &entityCount, sizeof(size_t));
+		std::memcpy(command.data + 4 * sizeof(size_t) + sizeof(uint64_t), &drawMode, sizeof(DrawMode));
 
 		return command;
 	}
@@ -98,7 +101,8 @@ namespace ZeroX
 					map.getVertexArrayIndex(VertexArrayType::VERTEX_COLORED_QUAD),
 					map.getLocationsDescriptorIndex(ShaderProgramType::SPRITE),
 					map.getMeshIndex(MeshType::QUAD),
-					section.descriptorCount
+					section.descriptorCount,
+					DrawMode::TRIANGLES
 				));
 
 			section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
