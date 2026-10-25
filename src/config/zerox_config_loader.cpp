@@ -176,10 +176,12 @@ namespace ZeroX
 						"./textures/test_background_1.png"
 					},
 					.data = {
-						.wrapModeS = renderer::WrapMode::REPEAT,
-						.wrapModeT = renderer::WrapMode::REPEAT,
-						.minFilter = renderer::Filter::LINEAR,
-						.magFilter = renderer::Filter::LINEAR
+						.wrapModeS	= renderer::WrapMode::REPEAT,
+						.wrapModeT	= renderer::WrapMode::REPEAT,
+						.minFilter	= renderer::Filter::LINEAR,
+						.magFilter	= renderer::Filter::LINEAR,
+						.width		= 1920,
+						.height		= 1080
 					}
 				};
 				config.addTextureArray(backgroundArrayConfig);
@@ -191,6 +193,9 @@ namespace ZeroX
 
 				memoryMap.mapVertexArray(0, VertexArrayType::TEXTURED_QUAD);
 				memoryMap.mapVertexArray(1, VertexArrayType::COLLIDER);
+
+				memoryMap.mapShaderProgram(1, ShaderProgramType::BACKGROUND);
+				memoryMap.mapLocationsDescriptor(1, ShaderProgramType::BACKGROUND);
 
 				memoryMap.mapShaderProgram(2, ShaderProgramType::SPRITE);
 				memoryMap.mapLocationsDescriptor(2, ShaderProgramType::SPRITE);

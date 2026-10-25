@@ -3,6 +3,8 @@
 
 #include <glad/gl.h>
 
+#include <texture_array.h>
+
 #include "config/zerox_config_loader.h"
 #include "zerox_engine_input.h"
 #include "zerox_engine_logger.h"
@@ -270,6 +272,17 @@ namespace ZeroX
         const std::vector<renderer::ShaderLocationsLink>& shaderLocationsLinks  = config.getShaderLocationsLinks();
         const std::vector<renderer::Texture>& textures                          = config.getTextures();
 
+        std::vector<renderer::TextureArray> textureArrays;
+        textureArrays.reserve(config.getTextureArrays().size());
+        for (const auto& textureArray : config.getTextureArrays())
+        {
+            textureArrays.emplace_back(renderer::TextureArray{
+                .data       = textureArray.data,
+                .imageFiles = textureArray.textureFiles.data(),
+                .imageCount = textureArray.textureFiles.size()
+            });
+        }
+
         renderer::GraphicsConfig graphicsConfig = {
             .meshes                     = meshes.data(),
             .textures                   = textures.data(),
@@ -280,10 +293,12 @@ namespace ZeroX
             .cameraUniformNames         = config.getCameraUniformNames().data(),
             .shaderCompileSteps         = shaderCompileSteps.data(),
             .shaderLocationsLinks       = shaderLocationsLinks.data(),
+            .textureArrays              = textureArrays.data(),
             .meshCount                  = meshes.size(),
             .bufferCount                = 5,
             .vertexArrayCount           = config.getVertexArrayCount(),
             .textureCount               = textures.size(),
+            .textureArrayCount          = textureArrays.size(),
             .shaderCount                = shaders.size(),
             .shaderProgramCount         = config.getShaderPrograms().size(),
             .locationsDescriptorCount   = shaderLocationsLinks.size(),
