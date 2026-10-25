@@ -2,6 +2,7 @@
 
 #include <render_frame_buffer.h>
 
+#include "config/zerox_graphics_config.h"
 #include "zerox_engine_context.h"
 
 namespace ZeroX
@@ -15,7 +16,7 @@ namespace ZeroX
         void load(const char* configPath);
 
     private:
-        void render(IWindow* window, renderer::FrameBuffer* frameBuffer);
+        void render(const GraphicsConfig& config, IWindow* window, renderer::FrameBuffer* frameBuffer);
         void stopRendering();
 
         std::unique_ptr<EngineContext> m_context{ nullptr };

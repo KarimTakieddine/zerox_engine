@@ -9,6 +9,7 @@
 
 #include <zerox_render_descriptor.h>
 
+#include "config/zerox_config_loader.h"
 #include "render_command_generator.h"
 #include "zerox_engine_input.h"
 #include "zerox_engine_logger.h"
@@ -151,6 +152,7 @@ namespace ZeroX
     {
         AsyncLoadPromise loadPromise;
 
+        auto graphicsConfigFuture       = loadGraphicsConfig();
         auto windowFuture               = loadPromise.window.get_future();
         auto audioPlayerFuture          = loadPromise.audioPlayer.get_future();
         auto gameLibraryFuture          = loadPromise.gameLibrary.get_future();
@@ -163,8 +165,10 @@ namespace ZeroX
 
         renderer::FrameBuffer renderFrameBuffer;
         renderFrameBuffer.allocate(64);
-
-        m_rendererThread = std::thread(&EngineRuntime::render, this, window, &renderFrameBuffer);
+        const GraphicsConfig graphicsConfig = graphicsConfigFuture.get();
+        m_rendererThread = std::thread(
+            &EngineRuntime::render,
+            this, graphicsConfig, window, &renderFrameBuffer);
 
         GameLibrary* gameLibrary = gameLibraryFuture.get();
 
@@ -278,7 +282,7 @@ namespace ZeroX
         }
     }
 
-    void EngineRuntime::render(IWindow* window, renderer::FrameBuffer* frameBuffer)
+    void EngineRuntime::render(const GraphicsConfig& config, IWindow* window, renderer::FrameBuffer* frameBuffer)
     {
         window->bindGraphicsContext();
 
@@ -294,88 +298,73 @@ namespace ZeroX
             << GLAD_VERSION_MAJOR(openGLVersion) << "."
             << GLAD_VERSION_MINOR(openGLVersion);
 
-        renderer::Vertex quadVertices[4] = {
-            { { -0.5f, -0.5f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f } },
-            { { -0.5f, 0.5f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f } },
-            { { 0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f }, { 1.0f, 0.0f } },
-            { { 0.5f, -0.5f, 0.0f }, { 1.0f, 1.0f, 1.0f }, { 1.0f, 1.0f } },
-        };
+        const std::vector<MeshConfig>& meshConfigs = config.getMeshes();
 
-        unsigned int quadTriangles[6] = { 0, 2, 1, 0, 3, 2 };
+        std::vector<renderer::Mesh> meshes;
+        meshes.reserve(meshConfigs.size());
+        for (const auto& meshConfig : meshConfigs)
+        {
+            const auto& vertices    = meshConfig.vertices;
+            const auto& triangles   = meshConfig.triangles;
 
-        renderer::Mesh meshes[1] = { { quadVertices, quadTriangles, 4, 6 } };
+            meshes.emplace_back(renderer::Mesh{
+                    .vertices       = const_cast<renderer::Vertex*>(vertices.data()),
+                    .triangles      = const_cast<unsigned int*>(triangles.data()),
+                    .vertexCount    = vertices.size(),
+                    .triangleCount  = triangles.size()
+                }
+            );
+        }
 
-        renderer::Shader shaderList[4] = {
-            { "./shaders/unlit_color/vertex.slh", renderer::Shader::Type::VERTEX },
-            { "./shaders/unlit_color/fragment.slh", renderer::Shader::Type::FRAGMENT },
-            { "./shaders/sprite/vertex.slh", renderer::Shader::Type::VERTEX },
-            { "./shaders/sprite/fragment.slh", renderer::Shader::Type::FRAGMENT },
-        };
+        std::vector<renderer::Shader> shaders;
+        size_t shaderCount{ 0 };
+        for (const auto& shaderProgramConfig : config.getShaderPrograms())
+        {
+            const std::vector<renderer::Shader>& shaderConfigs = shaderProgramConfig.shaders;
 
-        renderer::Eye cameraEye = {
-            .position   = glm::vec3{ 0.0f, 0.0f, 10.0f },
-            .target	    = glm::vec3{ 0.0f, 0.0f, 0.0f },
-            .up		    = glm::vec3{ 0.0f, 1.0f, 0.0f }
-        };
+            shaders.insert(shaders.begin() + shaderCount, shaderConfigs.begin(), shaderConfigs.end());
 
-        renderer::Frustum cameraFrustum = {
-            .fov        = 80.0f,
-            .aspect     = 1920.0f / 1080.0f,
-            .nearPlane  = 1.0f,
-            .farPlane   = 100.0f
-        };
+            shaderCount += shaderConfigs.size();
+        }
 
-        const char* cameraUniformNames[4] = {
-            "cameraProjection",
-            "cameraLocalToWorld",
-            "cameraLocalRotation",
-            "cameraView"
-        };
+        const std::vector<ShaderCompileConfig>& shaderCompileConfigs = config.getShaderCompileSteps();
+        std::vector<renderer::ShaderCompileStep> shaderCompileSteps;
+        shaderCompileSteps.reserve(shaderCompileConfigs.size());
+        for (const auto& compileConfig : shaderCompileConfigs)
+        {
+            const std::vector<size_t>& shaderIndices = compileConfig.shaderIndices;
 
-        const size_t entityCount = 5;
+            shaderCompileSteps.emplace_back(
+                renderer::ShaderCompileStep{
+                    .shaderIndices  = shaderIndices.data(),
+                    .shaderCount    = shaderIndices.size(),
+                    .programIndex   = compileConfig.programIndex
+                }
+            );
+        }
 
-        size_t unlitColorIndices[2] = { 0, 1 };
-        size_t spriteIndices[2] = { 2, 3 };
-
-        renderer::ShaderCompileStep shaderCompileSteps[2] = {
-            { .shaderIndices = unlitColorIndices, .shaderCount = 2, .programIndex = 0 },
-            { .shaderIndices = spriteIndices, .shaderCount = 2, .programIndex = 1 },
-        };
-
-        renderer::ShaderLocationsLink shaderLocationsLinks[2] = {
-            { .locationsIndex = 0, .shaderProgramIndex = 0 },
-            { .locationsIndex = 1, .shaderProgramIndex = 1 },
-        };
-
-        renderer::Texture textures[1] = {
-            {
-                .path = "./textures/the_mega_texture.png",
-                .wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
-                .wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
-                .minFilter = renderer::Filter::NEAREST,
-                .magFilter = renderer::Filter::NEAREST
-            }
-        };
+        const std::vector<renderer::ShaderLocationsLink>& shaderLocationsLinks  = config.getShaderLocationsLinks();
+        const std::vector<renderer::Texture>& textures                          = config.getTextures();
 
         renderer::GraphicsConfig graphicsConfig = {
-            .meshes = meshes,
-            .textures = textures,
-            .shaders = shaderList,
-            .cameraEye = &cameraEye,
-            .cameraFrustum = &cameraFrustum,
-            .cameraUniformBuffer = "CameraMatrices",
-            .cameraUniformNames = cameraUniformNames,
-            .shaderCompileSteps = shaderCompileSteps,
-            .shaderLocationsLinks = shaderLocationsLinks,
-            .meshCount = 1,
-            .bufferCount = 3,
-            .vertexArrayCount = 1,
-            .textureCount = 1,
-            .shaderCount = 4,
-            .shaderProgramCount = 2,
-            .locationsDescriptorCount = 2,
-            .compileStepCount = 2,
-            .locationsLinkCount = 2
+            .meshes                     = meshes.data(),
+            .textures                   = textures.data(),
+            .shaders                    = shaders.data(),
+            .cameraEye                  = &config.getCameraEye(),
+            .cameraFrustum              = &config.getCameraFrustum(),
+            .cameraUniformBuffer        = config.getCameraUniformBuffer().data(),
+            .cameraUniformNames         = config.getCameraUniformNames().data(),
+            .shaderCompileSteps         = shaderCompileSteps.data(),
+            .shaderLocationsLinks       = shaderLocationsLinks.data(),
+            .meshCount                  = meshes.size(),
+            .bufferCount                = 3,
+            .vertexArrayCount           = 1,
+            .textureCount               = textures.size(),
+            .shaderCount                = shaders.size(),
+            .shaderProgramCount         = config.getShaderPrograms().size(),
+            .locationsDescriptorCount   = shaderLocationsLinks.size(),
+            .compileStepCount           = shaderCompileSteps.size(),
+            .locationsLinkCount         = shaderLocationsLinks.size()
         };
 
         renderer::Allocator renderAllocator;
