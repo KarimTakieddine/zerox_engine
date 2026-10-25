@@ -1,4 +1,5 @@
 #include <render_entity.h>
+#include <cstring>
 
 #include "zerox_frame_builder.h"
 
