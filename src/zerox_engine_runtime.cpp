@@ -323,6 +323,7 @@ namespace ZeroX
             renderer::Frame renderFrame;
             if (frameBuffer->pop(renderFrame))
             {
+                // TODO(Karim): Memory seems to be re-read a lot here. Establish what is needed!
                 renderer::processFrame(&renderAllocator, mutableGraphicsMemory, &renderFrame);
             }
 
