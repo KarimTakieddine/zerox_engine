@@ -1,64 +1,39 @@
-#include <render_batch.h>
-#include <render_entity.h>
 #include <cstring>
 
 #include <memory_cursor.hpp>
+
+#include <render_batch.h>
+#include <render_command_types.h>
 
 #include "zerox_frame_builder.h"
 
 namespace
 {
-	using renderer::Command;
-	using renderer::CommandType;
-	using renderer::DrawMode;
-
-	Command buildAllocateBatchCommand(size_t shaderProgramIndex, size_t vertexArrayIndex, size_t locationsIndex, size_t meshIndex, size_t entityCount, DrawMode drawMode)
+	renderer::Command buildAllocateBatchCommand(const renderer::AllocateBatchCommand& command)
 	{
-		Command command{ .type = CommandType::ALLOCATE_RENDER_BATCH };
-
-		std::memcpy(command.data, &shaderProgramIndex, sizeof(size_t));
-		std::memcpy(command.data + sizeof(size_t), &vertexArrayIndex, sizeof(size_t));
-		std::memcpy(command.data + 2 * sizeof(size_t), &locationsIndex, sizeof(uint64_t));
-		std::memcpy(command.data + 2 * sizeof(size_t) + sizeof(uint64_t), &meshIndex, sizeof(size_t));
-		std::memcpy(command.data + 3 * sizeof(size_t) + sizeof(uint64_t), &entityCount, sizeof(size_t));
-		std::memcpy(command.data + 4 * sizeof(size_t) + sizeof(uint64_t), &drawMode, sizeof(DrawMode));
-
-		return command;
-	}
-
-	using renderer::Transform;
-	using renderer::Material;
-
-	Command generateRenderCommand(const Transform& transform, size_t batchIndex, size_t entityIndex)
-	{
-		Command result{ .type = CommandType::UPDATE_ENTITY_TRANSFORM };
-
-		std::memcpy(result.data, &batchIndex, sizeof(size_t));
-		std::memcpy(result.data + sizeof(size_t), &entityIndex, sizeof(size_t));
-		std::memcpy(result.data + 2 * sizeof(size_t), &transform, sizeof(Transform));
-
+		renderer::Command result{ .type = renderer::CommandType::ALLOCATE_RENDER_BATCH };
+		std::memcpy(result.data, &command, sizeof(renderer::AllocateBatchCommand));
 		return result;
 	}
 
-	Command generateRenderCommand(const Material& material, size_t batchIndex, size_t entityIndex)
+	renderer::Command buildUpdateTransformCommand(const renderer::UpdateTransformCommand& command)
 	{
-		Command result{ .type = renderer::CommandType::UPDATE_ENTITY_MATERIAL };
-
-		std::memcpy(result.data, &batchIndex, sizeof(size_t));
-		std::memcpy(result.data + sizeof(size_t), &entityIndex, sizeof(size_t));
-		std::memcpy(result.data + 2 * sizeof(size_t), &material, sizeof(Material));
-
+		renderer::Command result{ .type = renderer::CommandType::UPDATE_ENTITY_TRANSFORM };
+		std::memcpy(result.data, &command, sizeof(renderer::UpdateTransformCommand));
 		return result;
 	}
 
-	Command generateSetLayerCommand(uint64_t layer, size_t batchIndex, size_t entityIndex)
+	renderer::Command buildUpdateMaterialCommand(const renderer::UpdateMaterialCommand& command)
 	{
-		Command result{ .type = renderer::CommandType::SET_TEXTURE_LAYER };
+		renderer::Command result{ .type = renderer::CommandType::UPDATE_ENTITY_MATERIAL };
+		std::memcpy(result.data, &command, sizeof(renderer::UpdateMaterialCommand));
+		return result;
+	}
 
-		std::memcpy(result.data, &batchIndex, sizeof(size_t));
-		std::memcpy(result.data + sizeof(size_t), &entityIndex, sizeof(size_t));
-		std::memcpy(result.data + 2 * sizeof(size_t), &layer, sizeof(uint64_t));
-
+	renderer::Command buildSetTextureLayerCommand(const renderer::SetTextureLayerCommand& command)
+	{
+		renderer::Command result{ .type = renderer::CommandType::SET_TEXTURE_LAYER };
+		std::memcpy(result.data, &command, sizeof(renderer::SetTextureLayerCommand));
 		return result;
 	}
 }
@@ -113,14 +88,14 @@ namespace ZeroX
 		case EntitySectionType::BACKGROUND:
 		{
 			m_frame.renderCommands.push_back(
-				::buildAllocateBatchCommand(
-					map.getShaderProgramIndex(ShaderProgramType::BACKGROUND),
-					map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
-					map.getLocationsDescriptorIndex(ShaderProgramType::BACKGROUND),
-					map.getMeshIndex(MeshType::QUAD),
-					section.descriptorCount,
-					DrawMode::TRIANGLES
-				));
+				::buildAllocateBatchCommand({
+					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::BACKGROUND),
+					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
+					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::BACKGROUND),
+					.meshIndex			= map.getMeshIndex(MeshType::QUAD),
+					.entityCount		= section.descriptorCount,
+					.drawMode			= static_cast<uint64_t>(renderer::DrawMode::TRIANGLES)
+				}));
 
 			section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
 			
@@ -129,14 +104,14 @@ namespace ZeroX
 		case EntitySectionType::SPRITE:
 		{
 			m_frame.renderCommands.push_back(
-				::buildAllocateBatchCommand(
-					map.getShaderProgramIndex(ShaderProgramType::SPRITE),
-					map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
-					map.getLocationsDescriptorIndex(ShaderProgramType::SPRITE),
-					map.getMeshIndex(MeshType::QUAD),
-					section.descriptorCount,
-					DrawMode::TRIANGLES
-				));
+				::buildAllocateBatchCommand({
+					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::SPRITE),
+					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
+					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::SPRITE),
+					.meshIndex			= map.getMeshIndex(MeshType::QUAD),
+					.entityCount		= section.descriptorCount,
+					.drawMode			= static_cast<uint64_t>(renderer::DrawMode::TRIANGLES)
+				}));
 
 			section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
 
@@ -145,14 +120,14 @@ namespace ZeroX
 		case EntitySectionType::COLLIDER:
 		{
 			m_frame.renderCommands.push_back(
-				::buildAllocateBatchCommand(
-					map.getShaderProgramIndex(ShaderProgramType::COLLIDER),
-					map.getVertexArrayIndex(VertexArrayType::COLLIDER),
-					map.getLocationsDescriptorIndex(ShaderProgramType::COLLIDER),
-					map.getMeshIndex(MeshType::COLLIDER),
-					section.descriptorCount,
-					DrawMode::LINES
-				));
+				::buildAllocateBatchCommand({
+					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::COLLIDER),
+					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::COLLIDER),
+					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::COLLIDER),
+					.meshIndex			= map.getMeshIndex(MeshType::QUAD),
+					.entityCount		= section.descriptorCount,
+					.drawMode			= static_cast<uint64_t>(renderer::DrawMode::LINES)
+				}));
 
 			section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
 		}
@@ -177,9 +152,14 @@ namespace ZeroX
 
 			const auto* layer = reinterpret_cast<const uint64_t*>(gameMemory + cursor.getOffset() + sizeof(glm::vec2));
 
-			m_frame.renderCommands.push_back(::generateRenderCommand(*renderTransform, index, i));
-			m_frame.renderCommands.push_back(::generateRenderCommand(*renderMaterial, index, i));
-			m_frame.renderCommands.push_back(::generateSetLayerCommand(*layer, index, i));
+			m_frame.renderCommands.push_back(::buildUpdateTransformCommand({ *renderTransform, index, i }));
+			m_frame.renderCommands.push_back(::buildUpdateMaterialCommand({ *renderMaterial, index, i }));
+
+			renderer::SetTextureLayerCommand command;
+			command.batchIndex	= index;
+			command.entityIndex = i;
+			command.layer		= *layer;
+			m_frame.renderCommands.push_back(::buildSetTextureLayerCommand(command));
 		}
 	}
 
@@ -197,8 +177,8 @@ namespace ZeroX
 			const auto* renderMaterial = reinterpret_cast<const renderer::Material*>(gameMemory + cursor.getOffset());
 			cursor.step<renderer::Material>();
 
-			m_frame.renderCommands.push_back(::generateRenderCommand(*renderTransform, index, i));
-			m_frame.renderCommands.push_back(::generateRenderCommand(*renderMaterial, index, i));
+			m_frame.renderCommands.push_back(::buildUpdateTransformCommand({ *renderTransform, index, i }));
+			m_frame.renderCommands.push_back(::buildUpdateMaterialCommand({ *renderMaterial, index, i }));
 		}
 	}
 }

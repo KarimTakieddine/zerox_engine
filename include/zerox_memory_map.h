@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <unordered_map>
+#include <vector>
 
 namespace ZeroX
 {
@@ -9,7 +9,8 @@ namespace ZeroX
 	{
 		UNKNOWN		= 0,
 		QUAD		= 1,
-		COLLIDER	= 2
+		COLLIDER	= 2,
+		LAST		= COLLIDER
 	};
 
 	enum class ShaderProgramType : uint8_t
@@ -18,34 +19,37 @@ namespace ZeroX
 		UNLIT_COLOR	= 1,
 		BACKGROUND	= 2,
 		SPRITE		= 3,
-		COLLIDER	= 4
+		COLLIDER	= 4,
+		LAST		= COLLIDER
 	};
 
 	enum class VertexArrayType : uint8_t
 	{
 		UNKNOWN			= 0,
 		TEXTURED_QUAD	= 1,
-		BACKGROUND		= 2,
-		COLLIDER		= 3
+		COLLIDER		= 2,
+		LAST			= COLLIDER
 	};
 
 	class MemoryMap
 	{
 	public:
-		void mapMesh(size_t index, MeshType type);
-		void mapShaderProgram(size_t index, ShaderProgramType type);
-		void mapVertexArray(size_t index, VertexArrayType type);
-		void mapLocationsDescriptor(size_t index, ShaderProgramType type);
+		MemoryMap();
 
-		size_t getMeshIndex(MeshType type) const;
-		size_t getShaderProgramIndex(ShaderProgramType type) const;
-		size_t getVertexArrayIndex(VertexArrayType type) const;
-		size_t getLocationsDescriptorIndex(ShaderProgramType type) const;
+		void mapMesh(uint64_t index, MeshType type);
+		void mapShaderProgram(uint64_t index, ShaderProgramType type);
+		void mapVertexArray(uint64_t index, VertexArrayType type);
+		void mapLocationsDescriptor(uint64_t index, ShaderProgramType type);
+
+		uint64_t getMeshIndex(MeshType type) const;
+		uint64_t getShaderProgramIndex(ShaderProgramType type) const;
+		uint64_t getVertexArrayIndex(VertexArrayType type) const;
+		uint64_t getLocationsDescriptorIndex(ShaderProgramType type) const;
 
 	private:
-		std::unordered_map<MeshType, size_t> m_meshMappings;
-		std::unordered_map<ShaderProgramType, size_t> m_shaderProgramMappings;
-		std::unordered_map<ShaderProgramType, size_t> m_locationsDescriptorMappings;
-		std::unordered_map<VertexArrayType, size_t> m_vertexArrayMappings;
+		std::vector<uint64_t> m_meshMappings;
+		std::vector<uint64_t> m_shaderProgramMappings;
+		std::vector<uint64_t> m_descriptorMappings;
+		std::vector<uint64_t> m_vertexArrayMappings;
 	};
 }

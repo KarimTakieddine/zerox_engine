@@ -114,7 +114,7 @@ namespace ZeroX
         IAudioPlayer* audioPlayer = audioPlayerFuture.get();
         LOG_INFO << "Successfully intialized audio player";
 
-        window->setResizeCallback([&](int width, int height) -> void {
+        /*window->setResizeCallback([&](int width, int height) -> void {
             if (width <= 0 || height <= 0) { return; }
 
             renderer::Frame frame;
@@ -126,7 +126,7 @@ namespace ZeroX
             {
             
             }
-        });
+        });*/
 
         monitorJoystickConnections();
 
