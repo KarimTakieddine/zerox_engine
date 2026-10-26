@@ -9,31 +9,11 @@
 
 namespace
 {
-	renderer::Command buildAllocateBatchCommand(const renderer::AllocateBatchCommand& command)
+	template<renderer::CommandType R, typename T>
+	renderer::Command buildRenderCommand(const T& command)
 	{
-		renderer::Command result{ .type = renderer::CommandType::ALLOCATE_RENDER_BATCH };
-		std::memcpy(result.data, &command, sizeof(renderer::AllocateBatchCommand));
-		return result;
-	}
-
-	renderer::Command buildUpdateTransformCommand(const renderer::UpdateTransformCommand& command)
-	{
-		renderer::Command result{ .type = renderer::CommandType::UPDATE_ENTITY_TRANSFORM };
-		std::memcpy(result.data, &command, sizeof(renderer::UpdateTransformCommand));
-		return result;
-	}
-
-	renderer::Command buildUpdateMaterialCommand(const renderer::UpdateMaterialCommand& command)
-	{
-		renderer::Command result{ .type = renderer::CommandType::UPDATE_ENTITY_MATERIAL };
-		std::memcpy(result.data, &command, sizeof(renderer::UpdateMaterialCommand));
-		return result;
-	}
-
-	renderer::Command buildSetTextureLayerCommand(const renderer::SetTextureLayerCommand& command)
-	{
-		renderer::Command result{ .type = renderer::CommandType::SET_TEXTURE_LAYER };
-		std::memcpy(result.data, &command, sizeof(renderer::SetTextureLayerCommand));
+		renderer::Command result{ .type = R };
+		std::memcpy(result.data, &command, sizeof(T));
 		return result;
 	}
 }
@@ -88,7 +68,7 @@ namespace ZeroX
 		case EntitySectionType::BACKGROUND:
 		{
 			m_frame.renderCommands.push_back(
-				::buildAllocateBatchCommand({
+				::buildRenderCommand<renderer::CommandType::ALLOCATE_RENDER_BATCH, renderer::AllocateBatchCommand>({
 					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::BACKGROUND),
 					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
 					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::BACKGROUND),
@@ -104,7 +84,7 @@ namespace ZeroX
 		case EntitySectionType::SPRITE:
 		{
 			m_frame.renderCommands.push_back(
-				::buildAllocateBatchCommand({
+				::buildRenderCommand<renderer::CommandType::ALLOCATE_RENDER_BATCH, renderer::AllocateBatchCommand>({
 					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::SPRITE),
 					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
 					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::SPRITE),
@@ -120,7 +100,7 @@ namespace ZeroX
 		case EntitySectionType::COLLIDER:
 		{
 			m_frame.renderCommands.push_back(
-				::buildAllocateBatchCommand({
+				::buildRenderCommand<renderer::CommandType::ALLOCATE_RENDER_BATCH, renderer::AllocateBatchCommand>({
 					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::COLLIDER),
 					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::COLLIDER),
 					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::COLLIDER),
@@ -152,14 +132,14 @@ namespace ZeroX
 
 			const auto* layer = reinterpret_cast<const uint64_t*>(gameMemory + cursor.getOffset() + sizeof(glm::vec2));
 
-			m_frame.renderCommands.push_back(::buildUpdateTransformCommand({ *renderTransform, index, i }));
-			m_frame.renderCommands.push_back(::buildUpdateMaterialCommand({ *renderMaterial, index, i }));
+			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_TRANSFORM, renderer::UpdateTransformCommand>({ *renderTransform, index, i }));
+			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_MATERIAL, renderer::UpdateMaterialCommand>({ *renderMaterial, index, i }));
 
 			renderer::SetTextureLayerCommand command;
 			command.batchIndex	= index;
 			command.entityIndex = i;
 			command.layer		= *layer;
-			m_frame.renderCommands.push_back(::buildSetTextureLayerCommand(command));
+			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::SET_TEXTURE_LAYER, renderer::SetTextureLayerCommand>(command));
 		}
 	}
 
@@ -177,8 +157,8 @@ namespace ZeroX
 			const auto* renderMaterial = reinterpret_cast<const renderer::Material*>(gameMemory + cursor.getOffset());
 			cursor.step<renderer::Material>();
 
-			m_frame.renderCommands.push_back(::buildUpdateTransformCommand({ *renderTransform, index, i }));
-			m_frame.renderCommands.push_back(::buildUpdateMaterialCommand({ *renderMaterial, index, i }));
+			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_TRANSFORM, renderer::UpdateTransformCommand>({ *renderTransform, index, i }));
+			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_MATERIAL, renderer::UpdateMaterialCommand>({ *renderMaterial, index, i }));
 		}
 	}
 }
