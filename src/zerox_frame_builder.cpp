@@ -124,7 +124,7 @@ namespace ZeroX
 					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::COLLIDER),
 					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::COLLIDER),
 					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::COLLIDER),
-					.meshIndex			= map.getMeshIndex(MeshType::QUAD),
+					.meshIndex			= map.getMeshIndex(MeshType::COLLIDER),
 					.entityCount		= section.descriptorCount,
 					.drawMode			= static_cast<uint64_t>(renderer::DrawMode::LINES)
 				}));

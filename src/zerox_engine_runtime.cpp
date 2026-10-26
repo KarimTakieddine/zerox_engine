@@ -3,6 +3,7 @@
 
 #include <glad/gl.h>
 
+#include <render_command_types.h>
 #include <texture_array.h>
 
 #include "config/zerox_config_loader.h"
@@ -114,19 +115,19 @@ namespace ZeroX
         IAudioPlayer* audioPlayer = audioPlayerFuture.get();
         LOG_INFO << "Successfully intialized audio player";
 
-        /*window->setResizeCallback([&](int width, int height) -> void {
+        window->setResizeCallback([&](int width, int height) -> void {
             if (width <= 0 || height <= 0) { return; }
 
             renderer::Frame frame;
-            renderer::Command setAspectRatioCommand{ .type = renderer::CommandType::SET_CAMERA_ASPECT_RATIO };
-            std::memcpy(setAspectRatioCommand.data, &width, sizeof(int));
-            std::memcpy(setAspectRatioCommand.data + sizeof(int), &height, sizeof(int));
-            frame.renderCommands.push_back(setAspectRatioCommand);
-            while (!renderFrameBuffer.push(frame))
-            {
-            
-            }
-        });*/
+            renderer::Command command{ .type = renderer::CommandType::SET_CLIENT_AREA };
+            renderer::SetClientAreaCommand clientAreaCommand = {
+                .width  = static_cast<uint64_t>(width),
+                .height = static_cast<uint64_t>(height)
+            };
+            std::memcpy(command.data, &clientAreaCommand, sizeof(renderer::SetClientAreaCommand));
+            frame.renderCommands.push_back(command);
+            while (!renderFrameBuffer.push(frame)) { }
+        });
 
         monitorJoystickConnections();
 
