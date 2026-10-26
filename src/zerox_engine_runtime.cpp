@@ -324,8 +324,10 @@ namespace ZeroX
             if (frameBuffer->pop(renderFrame))
             {
                 // TODO(Karim): Memory seems to be re-read a lot here. Establish what is needed!
-                renderer::processFrame(&renderAllocator, mutableGraphicsMemory, &renderFrame);
+                renderer::processFrame(&renderAllocator, &renderFrame);
             }
+
+            renderer::ConstGraphicsMemory renderMemory = renderer::readGraphicsMemory<true>(&renderAllocator);
 
             const IWindow::Size clientSize = window->getSize();
 
@@ -335,7 +337,7 @@ namespace ZeroX
                 mutableGraphicsMemory.cameraFrustum.data());
 
             renderer::clearFrameBuffer();
-            renderer::render(mutableGraphicsMemory, renderer::getPixelsPerUnit(clientSize.width, clientSize.height, worldDimensions));
+            renderer::render(renderMemory, renderer::getPixelsPerUnit(clientSize.width, clientSize.height, worldDimensions));
             window->swapBuffers();
 
             auto currentTimePoint       = std::chrono::steady_clock::now();
