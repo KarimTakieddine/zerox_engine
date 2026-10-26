@@ -25,7 +25,8 @@ namespace ZeroX
 	{
 		UNKNOWN			= 0,
 		TEXTURED_QUAD	= 1,
-		COLLIDER		= 2
+		BACKGROUND		= 2,
+		COLLIDER		= 3
 	};
 
 	class MemoryMap

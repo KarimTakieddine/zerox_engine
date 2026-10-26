@@ -2,6 +2,8 @@
 #include <render_entity.h>
 #include <cstring>
 
+#include <memory_cursor.hpp>
+
 #include "zerox_frame_builder.h"
 
 namespace
@@ -48,6 +50,17 @@ namespace
 
 		return result;
 	}
+
+	Command generateSetLayerCommand(uint64_t layer, size_t batchIndex, size_t entityIndex)
+	{
+		Command result{ .type = renderer::CommandType::SET_TEXTURE_LAYER };
+
+		std::memcpy(result.data, &batchIndex, sizeof(size_t));
+		std::memcpy(result.data + sizeof(size_t), &entityIndex, sizeof(size_t));
+		std::memcpy(result.data + 2 * sizeof(size_t), &layer, sizeof(uint64_t));
+
+		return result;
+	}
 }
 
 namespace ZeroX
@@ -76,6 +89,9 @@ namespace ZeroX
 
 		switch (section.type)
 		{
+		case EntitySectionType::BACKGROUND:
+			processBackgroundSection(gameMemory, section, index);
+			break;
 		case EntitySectionType::SPRITE:
 		case EntitySectionType::COLLIDER:
 			processSpriteSection(gameMemory, section, index);
@@ -94,6 +110,22 @@ namespace ZeroX
 	{
 		switch (section.type)
 		{
+		case EntitySectionType::BACKGROUND:
+		{
+			m_frame.renderCommands.push_back(
+				::buildAllocateBatchCommand(
+					map.getShaderProgramIndex(ShaderProgramType::BACKGROUND),
+					map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
+					map.getLocationsDescriptorIndex(ShaderProgramType::BACKGROUND),
+					map.getMeshIndex(MeshType::QUAD),
+					section.descriptorCount,
+					DrawMode::TRIANGLES
+				));
+
+			section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
+			
+			break;
+		}
 		case EntitySectionType::SPRITE:
 		{
 			m_frame.renderCommands.push_back(
@@ -129,16 +161,44 @@ namespace ZeroX
 		}
 	}
 
+	void FrameBuilder::processBackgroundSection(const std::byte* gameMemory, EntitySection& section, uint64_t index)
+	{
+		for (uint64_t i = 0; i < section.descriptorCount; ++i)
+		{
+			const EntityReadDescriptor* readDescriptor = section.readDescriptors + i;
+
+			MemoryCursor<16> cursor(readDescriptor->start + readDescriptor->offset);
+
+			const auto* renderTransform = reinterpret_cast<const renderer::Transform*>(gameMemory + cursor.getOffset());
+			cursor.step<renderer::Transform>();
+
+			const auto* renderMaterial = reinterpret_cast<const renderer::Material*>(gameMemory + cursor.getOffset());
+			cursor.step<renderer::Material>();
+
+			const auto* layer = reinterpret_cast<const uint64_t*>(gameMemory + cursor.getOffset() + sizeof(glm::vec2));
+
+			m_frame.renderCommands.push_back(::generateRenderCommand(*renderTransform, index, i));
+			m_frame.renderCommands.push_back(::generateRenderCommand(*renderMaterial, index, i));
+			m_frame.renderCommands.push_back(::generateSetLayerCommand(*layer, index, i));
+		}
+	}
+
 	void FrameBuilder::processSpriteSection(const std::byte* gameMemory, EntitySection& section, uint64_t index)
 	{
 		for (uint64_t i = 0; i < section.descriptorCount; ++i)
 		{
-			const auto* readDescriptor = section.readDescriptors + i;
+			const EntityReadDescriptor* readDescriptor = section.readDescriptors + i;
 
-			const renderer::RenderEntity* renderEntity = reinterpret_cast<const renderer::RenderEntity*>(gameMemory + readDescriptor->start + readDescriptor->offset);
+			MemoryCursor<16> cursor(readDescriptor->start + readDescriptor->offset);
 
-			m_frame.renderCommands.push_back(::generateRenderCommand(renderEntity->transform, index, i));
-			m_frame.renderCommands.push_back(::generateRenderCommand(renderEntity->material, index, i));
+			const auto* renderTransform = reinterpret_cast<const renderer::Transform*>(gameMemory + cursor.getOffset());
+			cursor.step<renderer::Transform>();
+
+			const auto* renderMaterial = reinterpret_cast<const renderer::Material*>(gameMemory + cursor.getOffset());
+			cursor.step<renderer::Material>();
+
+			m_frame.renderCommands.push_back(::generateRenderCommand(*renderTransform, index, i));
+			m_frame.renderCommands.push_back(::generateRenderCommand(*renderMaterial, index, i));
 		}
 	}
 }

@@ -25,6 +25,7 @@ namespace ZeroX
 	private:
 		void processEntitySection(const std::byte* gameMemory, const MemoryMap& map, EntitySection& section, uint64_t index);
 		void allocateEntitySection(const MemoryMap& map, EntitySection& section);
+		void processBackgroundSection(const std::byte* gameMemory, EntitySection& section, uint64_t index);
 		void processSpriteSection(const std::byte* gameMemory, EntitySection& section, uint64_t index);
 
 		renderer::Frame m_frame;
