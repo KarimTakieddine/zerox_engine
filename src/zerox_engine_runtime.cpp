@@ -382,16 +382,12 @@ namespace ZeroX
         while (m_runRenderer.load(std::memory_order_acquire))
         {
 #ifdef _WIN32
-            // A. LOCK OBJECT: Signal to driver that OpenGL is writing to the shared resource
             wglDXLockObjectsNV(wglDXDeviceHandle, 1, &glSharedTexture);
-
-            // B. RENDER STEP: Render engine scene natively via standard OpenGL pipelines
             glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer.frameBufferHandle);
 #endif
             renderer::Frame renderFrame;
             if (m_runRenderer.load(std::memory_order_acquire) && frameBuffer->pop(renderFrame))
             {
-                // TODO(Karim): Memory seems to be re-read a lot here. Establish what is needed!
                 renderer::processFrame(&renderAllocator, &renderFrame);
             }
 
@@ -408,13 +404,11 @@ namespace ZeroX
             renderer::render(renderMemory, renderer::getPixelsPerUnit(clientSize.width, clientSize.height, worldDimensions));
 
 #ifdef _WIN32
-            // C. UNLOCK OBJECT: Hand resource context execution back over to Windows display server
+            // TODO(Karim): Explicit glFlush() call here?
+
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
             wglDXUnlockObjectsNV(wglDXDeviceHandle, 1, &glSharedTexture);
 
-            // D. PRESENT: Bypass glfwSwapBuffers completely and deploy modern DXGI presentation
-            // Parameter 1 forces VSync via DXGI pacing queue, removing random windowed DWM judder
-            // dxgiSwapChain->Present(1, 0);
             d3d11Device->copySurfaceToBackBuffer(static_cast<UINT>(clientSize.width), static_cast<UINT>(clientSize.height));
             d3d11Device->getSwapChain()->Present(1, 0);
 #else
