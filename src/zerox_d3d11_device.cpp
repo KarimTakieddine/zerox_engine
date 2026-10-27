@@ -112,4 +112,19 @@ namespace ZeroX
 			// TODO(Karim): General function for mapping GetLastError() to string
 			throw std::runtime_error("Failed to create GraphicsDevice");
 	}
+
+	ComPtr<ID3D11Device> D3D11Device::getDevice() const
+	{
+		return m_device;
+	}
+
+	ComPtr<ID3D11DeviceContext> D3D11Device::getContext() const
+	{
+		return m_context;
+	}
+
+	ComPtr<IDXGISwapChain> D3D11Device::getSwapChain() const
+	{
+		return m_swapChain;
+	}
 }

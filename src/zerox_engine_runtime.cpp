@@ -227,6 +227,14 @@ namespace ZeroX
             static_cast<UINT>(windowSize.width),
             static_cast<UINT>(windowSize.height));
 
+        ComPtr<ID3D11Texture2D> d3d11BackBufferTexture;
+        HRESULT hr = d3d11Device->getSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&d3d11BackBufferTexture);
+        if (FAILED(hr))
+        {
+            LOG_ERROR << "Failed to initialize rendering logic. Could not get D3D11 back buffer texture";
+            return;
+        }
+
 
 #endif
 

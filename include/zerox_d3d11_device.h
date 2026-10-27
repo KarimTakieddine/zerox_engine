@@ -20,14 +20,7 @@ namespace ZeroX
 		ComPtr<ID3D11DeviceContext> getContext() const;
 		ComPtr<IDXGISwapChain> getSwapChain() const;
 
-		void setViewport(float width, float height);
-		void createRenderTargetView();
-		void targetBackBuffer();
-		void resizeBuffers(UINT width, UINT height);
-
 	private:
-		void releaseBufferResources();
-
 		ComPtr<ID3D11Device> m_device			{ nullptr };
 		ComPtr<ID3D11DeviceContext> m_context	{ nullptr };
 		ComPtr<IDXGISwapChain> m_swapChain		{ nullptr };
