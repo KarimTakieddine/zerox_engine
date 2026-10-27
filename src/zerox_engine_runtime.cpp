@@ -18,8 +18,8 @@
 #include "zerox_time.h"
 
 #ifdef _WIN32
-#include <glad/wgl.h>
 #include "zerox_d3d11_device.h"
+#include "zerox_wgl_interop.h"
 #endif
 
 namespace
@@ -252,16 +252,6 @@ namespace ZeroX
             return;
         }
 
-        HANDLE wglDXDeviceHandle{ NULL };
-
-        if (!GLAD_WGL_NV_DX_interop2)
-        {
-            LOG_ERROR << "Failed to initialize GLAD GLAD_WGL_NV_DX_interop2 extension";
-            return;
-        }
-
-        wglDXDeviceHandle = wglDXOpenDeviceNV(d3d11Device->getDevice().Get());
-
         renderer::RenderBuffer renderBuffer;
         renderer::initializeRenderBuffer(&renderBuffer);
 
@@ -274,13 +264,7 @@ namespace ZeroX
 
         renderer::setTextureParameters(renderBuffer.textureHandle, GL_TEXTURE_2D, &renderBufferParams, true);
 
-        HANDLE glSharedTexture = wglDXRegisterObjectNV(
-            wglDXDeviceHandle,
-            d3d11Device->getClientSurface().Get(),
-            renderBuffer.textureHandle,
-            GL_TEXTURE_2D,
-            WGL_ACCESS_WRITE_DISCARD_NV
-        );
+        WGLInterop interopLayer(renderBuffer, d3d11Device->getDevice().Get(), d3d11Device->getClientSurface().Get());
 
         renderer::bindRenderBuffer(&renderBuffer);
 #endif
@@ -382,7 +366,7 @@ namespace ZeroX
         while (m_runRenderer.load(std::memory_order_acquire))
         {
 #ifdef _WIN32
-            wglDXLockObjectsNV(wglDXDeviceHandle, 1, &glSharedTexture);
+            wglDXLockObjectsNV(interopLayer.getWGLDXDevice(), 1, &interopLayer.getWGLSharedTexture());
             glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer.frameBufferHandle);
 #endif
             renderer::Frame renderFrame;
@@ -407,7 +391,7 @@ namespace ZeroX
             // TODO(Karim): Explicit glFlush() call here?
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            wglDXUnlockObjectsNV(wglDXDeviceHandle, 1, &glSharedTexture);
+            wglDXUnlockObjectsNV(interopLayer.getWGLDXDevice(), 1, &interopLayer.getWGLSharedTexture());
 
             d3d11Device->copySurfaceToBackBuffer(static_cast<UINT>(clientSize.width), static_cast<UINT>(clientSize.height));
             d3d11Device->getSwapChain()->Present(1, 0);
@@ -430,16 +414,6 @@ namespace ZeroX
         renderer::freeGraphicsResources(mutableGraphicsMemory);
 
 #ifdef _WIN32
-        if (wglDXDeviceHandle && glSharedTexture)
-        {
-            wglDXUnregisterObjectNV(wglDXDeviceHandle, glSharedTexture);
-        }
-
-        if (wglDXDeviceHandle)
-        {
-            wglDXCloseDeviceNV(wglDXDeviceHandle);
-        }
-
         renderer::destroyRenderBuffer(&renderBuffer);
 #endif
     }

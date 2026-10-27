@@ -39,7 +39,9 @@ list(APPEND SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
 
 if (WIN32)
-    list(APPEND SOURCES ${SRC_DIR}/zerox_d3d11_device.cpp)
+    list(APPEND SOURCES
+        ${SRC_DIR}/zerox_d3d11_device.cpp
+        ${SRC_DIR}/zerox_wgl_interop.cpp)
 endif()
 
 add_executable(${PROJECT_NAME} ${SOURCES})
