@@ -102,4 +102,11 @@ namespace ZeroX
     {
         return m_resizeCallback;
     }
+
+#ifdef _WIN32
+    HWND GLFWWindow::getNativeWin32Handle() const
+    {
+        return glfwGetWin32Window(m_handle);
+    }
+#endif
 }

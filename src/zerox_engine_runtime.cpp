@@ -3,6 +3,7 @@
 
 #include <glad/gl.h>
 
+#include <render_buffer.h>
 #include <render_command_types.h>
 #include <texture_array.h>
 
@@ -15,6 +16,11 @@
 #include "zerox_memory_map.h"
 #include "zerox_miniaudio_player.h"
 #include "zerox_time.h"
+
+#ifdef _WIN32
+#include "zerox_d3d11_device.h"
+#include "zerox_wgl_interop.h"
+#endif
 
 namespace
 {
@@ -118,6 +124,11 @@ namespace ZeroX
         window->setResizeCallback([&](int width, int height) -> void {
             if (width <= 0 || height <= 0) { return; }
 
+#ifdef _WIN32
+            m_resizeWidth.store(static_cast<UINT>(width), std::memory_order_release);
+            m_resizeHeight.store(static_cast<UINT>(height), std::memory_order_release);
+            m_resizeRequested.store(true, std::memory_order_release);
+#else
             renderer::Frame frame;
             renderer::Command command{ .type = renderer::CommandType::SET_CLIENT_AREA };
             renderer::SetClientAreaCommand clientAreaCommand = {
@@ -127,6 +138,7 @@ namespace ZeroX
             std::memcpy(command.data, &clientAreaCommand, sizeof(renderer::SetClientAreaCommand));
             frame.renderCommands.push_back(command);
             while (!renderFrameBuffer.push(frame)) { }
+#endif
         });
 
         monitorJoystickConnections();
@@ -225,6 +237,44 @@ namespace ZeroX
             << GLAD_VERSION_MAJOR(openGLVersion) << "."
             << GLAD_VERSION_MINOR(openGLVersion);
 
+#ifdef _WIN32
+        glfwSwapInterval(0);
+
+        IWindow::Size windowSize = window->getSize();
+
+        const auto* glfwWindow = dynamic_cast<const GLFWWindow*>(window);
+
+        HWND nativeWindowHandle = glfwWindow->getNativeWin32Handle();
+
+        std::unique_ptr<D3D11Device> d3d11Device = std::make_unique<D3D11Device>(
+            nativeWindowHandle,
+            static_cast<UINT>(windowSize.width),
+            static_cast<UINT>(windowSize.height));
+
+        HDC hdc = GetDC(nativeWindowHandle);
+        if (!gladLoadWGL(hdc, glfwGetProcAddress))
+        {
+            LOG_ERROR << "Failed to initialize GLAD WGL logic";
+            return;
+        }
+
+        renderer::RenderBuffer renderBuffer;
+        renderer::initializeRenderBuffer(&renderBuffer);
+
+        renderer::TextureData renderBufferParams = {
+            .wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
+            .wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
+            .minFilter = renderer::Filter::LINEAR,
+            .magFilter = renderer::Filter::LINEAR
+        };
+
+        renderer::setTextureParameters(renderBuffer.textureHandle, GL_TEXTURE_2D, &renderBufferParams, true);
+
+        WGLInterop interopLayer(renderBuffer, d3d11Device->getDevice().Get(), d3d11Device->getClientSurface().Get());
+
+        renderer::bindRenderBuffer(&renderBuffer);
+#endif
+
         const std::vector<MeshConfig>& meshConfigs = config.getMeshes();
 
         std::vector<renderer::Mesh> meshes;
@@ -319,12 +369,47 @@ namespace ZeroX
         uint64_t frameIndex{ 0 };
         auto startTimePoint = std::chrono::steady_clock::now();
 
+        GLint megaTextureId{ 0 };
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &megaTextureId);
+
         while (m_runRenderer.load(std::memory_order_acquire))
         {
-            renderer::Frame renderFrame;
-            if (frameBuffer->pop(renderFrame))
+#ifdef _WIN32
+            if (m_resizeRequested.load(std::memory_order_acquire))
             {
-                // TODO(Karim): Memory seems to be re-read a lot here. Establish what is needed!
+                const UINT newWidth     = m_resizeWidth.load(std::memory_order_acquire);
+                const UINT newHeight    = m_resizeHeight.load(std::memory_order_acquire);
+
+                interopLayer.release();
+                renderer::destroyRenderBuffer(&renderBuffer);
+
+                d3d11Device->resizeBuffers(newWidth, newHeight);
+
+                renderer::initializeRenderBuffer(&renderBuffer);
+                renderer::setTextureParameters(renderBuffer.textureHandle, GL_TEXTURE_2D, &renderBufferParams, true);
+
+                interopLayer.initialize(renderBuffer, d3d11Device->getDevice().Get(), d3d11Device->getClientSurface().Get());
+                renderer::bindRenderBuffer(&renderBuffer);
+
+                glViewport(0, 0, static_cast<int>(newWidth), static_cast<int>(newHeight));
+                renderer::setCameraAspectRatio(mutableGraphicsMemory, static_cast<int>(newWidth), static_cast<int>(newHeight));
+
+                GLint currentTextureId{ 0 };
+                glGetIntegerv(GL_TEXTURE_BINDING_2D, &currentTextureId);
+                if (currentTextureId != megaTextureId)
+                {
+                    glBindTexture(GL_TEXTURE_2D, megaTextureId);
+                }
+
+                m_resizeRequested.store(false, std::memory_order_release);
+            }
+
+            wglDXLockObjectsNV(interopLayer.getWGLDXDevice(), 1, &interopLayer.getWGLSharedTexture());
+            glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer.frameBufferHandle);
+#endif
+            renderer::Frame renderFrame;
+            if (m_runRenderer.load(std::memory_order_acquire) && frameBuffer->pop(renderFrame))
+            {
                 renderer::processFrame(&renderAllocator, &renderFrame);
             }
 
@@ -339,8 +424,18 @@ namespace ZeroX
 
             renderer::clearFrameBuffer();
             renderer::render(renderMemory, renderer::getPixelsPerUnit(clientSize.width, clientSize.height, worldDimensions));
-            window->swapBuffers();
 
+#ifdef _WIN32
+            // TODO(Karim): Explicit glFlush() call here?
+
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            wglDXUnlockObjectsNV(interopLayer.getWGLDXDevice(), 1, &interopLayer.getWGLSharedTexture());
+
+            d3d11Device->copySurfaceToBackBuffer(static_cast<UINT>(clientSize.width), static_cast<UINT>(clientSize.height));
+            d3d11Device->getSwapChain()->Present(1, 0);
+#else
+            window->swapBuffers();
+#endif
             auto currentTimePoint       = std::chrono::steady_clock::now();
             int64_t microSecondsElapsed = std::chrono::duration_cast<std::chrono::microseconds>(currentTimePoint - startTimePoint).count();
 
@@ -355,5 +450,11 @@ namespace ZeroX
         }
 
         renderer::freeGraphicsResources(mutableGraphicsMemory);
+
+#ifdef _WIN32
+        renderer::destroyRenderBuffer(&renderBuffer);
+
+        ReleaseDC(nativeWindowHandle, hdc);
+#endif
     }
 }

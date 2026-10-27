@@ -38,6 +38,12 @@ list(APPEND SOURCES
     ${MINIAUDIO_DIR}/miniaudio.c
     ${CMAKE_CURRENT_SOURCE_DIR}/zerox_engine.cpp)
 
+if (WIN32)
+    list(APPEND SOURCES
+        ${SRC_DIR}/zerox_d3d11_device.cpp
+        ${SRC_DIR}/zerox_wgl_interop.cpp)
+endif()
+
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 add_custom_target(Assets ALL)
@@ -62,7 +68,19 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${MEMORY_READER_DIR}/include
     ${PUGIXML_DIR}/src)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE zerox_engine_platform zerox_engine_renderer zerox_memory_bridge::zerox_memory_bridge glfw pugixml::static)
+list(APPEND ZEROX_STATIC_LIBS
+    zerox_engine_platform
+    zerox_engine_renderer
+    zerox_memory_bridge::zerox_memory_bridge
+    glfw
+    pugixml::static
+)
+
+if (WIN32)
+    list (APPEND ZEROX_STATIC_LIBS D3D11 D3DCOMPILER DXGI)
+endif()
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ${ZEROX_STATIC_LIBS})
 
 add_custom_command(TARGET Assets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${AUDIO_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${AUDIO_DIR}

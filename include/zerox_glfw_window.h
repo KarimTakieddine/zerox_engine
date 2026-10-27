@@ -2,6 +2,12 @@
 
 #include <GLFW/glfw3.h>
 
+#ifdef _WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+#define GLFW_EXPOSE_NATIVE_WGL
+#include <GLFW/glfw3native.h>
+#endif
+
 #include "config/zerox_window_config.h"
 #include "zerox_window.h"
 
@@ -26,6 +32,10 @@ namespace ZeroX
         void unbindGraphicsContext() override;
         void setResizeCallback(ResizeCallback resizeCallback) override;
         ResizeCallback getResizeCallback() const override;
+
+#ifdef _WIN32
+        HWND getNativeWin32Handle() const;
+#endif
 
     private:
         GLFWwindow* m_handle            { nullptr };
