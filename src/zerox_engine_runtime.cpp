@@ -16,6 +16,10 @@
 #include "zerox_miniaudio_player.h"
 #include "zerox_time.h"
 
+#ifdef _WIN32
+#include "zerox_d3d11_device.h"
+#endif
+
 namespace
 {
     bool copyGameLibrary(const std::filesystem::path gameDirectoryPath, const std::filesystem::path& gameLibraryPath, std::filesystem::path& destinationPath, uint64_t suffix)
@@ -212,6 +216,19 @@ namespace ZeroX
     void EngineRuntime::render(const GraphicsConfig& config, IWindow* window, renderer::FrameBuffer* frameBuffer)
     {
         window->bindGraphicsContext();
+
+#ifdef _WIN32
+        IWindow::Size windowSize = window->getSize();
+
+        const auto* glfwWindow = dynamic_cast<const GLFWWindow*>(window);
+
+        std::unique_ptr<D3D11Device> d3d11Device = std::make_unique<D3D11Device>(
+            glfwWindow->getNativeWin32Handle(),
+            static_cast<UINT>(windowSize.width),
+            static_cast<UINT>(windowSize.height));
+
+
+#endif
 
         int openGLVersion = gladLoadGL(glfwGetProcAddress);
         if (openGLVersion == 0)
