@@ -186,6 +186,17 @@ namespace ZeroX
 		m_context->PSSetShaderResources(0, 1, &nullSRVs);
 	}
 
+	void D3D11Device::resizeBuffers(UINT width, UINT height)
+	{
+		m_backBufferRTV.Reset();
+		m_stagingSRV.Reset();
+		m_clientSurface.Reset();
+
+		m_swapChain->ResizeBuffers(2, width, height, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
+
+		createBuffersAndViews(width, height);
+	}
+
 	void D3D11Device::initBlitPipeline()
 	{
         const char* vertexShaderSource = R"(

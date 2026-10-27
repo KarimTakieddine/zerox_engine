@@ -22,6 +22,7 @@ namespace ZeroX
 		ComPtr<ID3D11Texture2D> getClientSurface() const;
 
 		void copySurfaceToBackBuffer(UINT width, UINT height);
+		void resizeBuffers(UINT width, UINT height);
 
 	private:
 		void initBlitPipeline();
