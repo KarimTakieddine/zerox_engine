@@ -17,6 +17,7 @@
 #include "zerox_time.h"
 
 #ifdef _WIN32
+#include <glad/wgl.h>
 #include "zerox_d3d11_device.h"
 #endif
 
@@ -122,7 +123,7 @@ namespace ZeroX
         window->setResizeCallback([&](int width, int height) -> void {
             if (width <= 0 || height <= 0) { return; }
 
-            renderer::Frame frame;
+            /*renderer::Frame frame;
             renderer::Command command{ .type = renderer::CommandType::SET_CLIENT_AREA };
             renderer::SetClientAreaCommand clientAreaCommand = {
                 .width  = static_cast<uint64_t>(width),
@@ -130,7 +131,7 @@ namespace ZeroX
             };
             std::memcpy(command.data, &clientAreaCommand, sizeof(renderer::SetClientAreaCommand));
             frame.renderCommands.push_back(command);
-            while (!renderFrameBuffer.push(frame)) { }
+            while (!renderFrameBuffer.push(frame)) { }*/
         });
 
         monitorJoystickConnections();
@@ -217,27 +218,6 @@ namespace ZeroX
     {
         window->bindGraphicsContext();
 
-#ifdef _WIN32
-        IWindow::Size windowSize = window->getSize();
-
-        const auto* glfwWindow = dynamic_cast<const GLFWWindow*>(window);
-
-        std::unique_ptr<D3D11Device> d3d11Device = std::make_unique<D3D11Device>(
-            glfwWindow->getNativeWin32Handle(),
-            static_cast<UINT>(windowSize.width),
-            static_cast<UINT>(windowSize.height));
-
-        ComPtr<ID3D11Texture2D> d3d11BackBufferTexture;
-        HRESULT hr = d3d11Device->getSwapChain()->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&d3d11BackBufferTexture);
-        if (FAILED(hr))
-        {
-            LOG_ERROR << "Failed to initialize rendering logic. Could not get D3D11 back buffer texture";
-            return;
-        }
-
-
-#endif
-
         int openGLVersion = gladLoadGL(glfwGetProcAddress);
         if (openGLVersion == 0)
         {
@@ -249,6 +229,65 @@ namespace ZeroX
             << "Loaded OpenGL version: "
             << GLAD_VERSION_MAJOR(openGLVersion) << "."
             << GLAD_VERSION_MINOR(openGLVersion);
+
+#ifdef _WIN32
+        glfwSwapInterval(0);
+
+        IWindow::Size windowSize = window->getSize();
+
+        const auto* glfwWindow = dynamic_cast<const GLFWWindow*>(window);
+
+        HWND nativeWindowHandle = glfwWindow->getNativeWin32Handle();
+
+        std::unique_ptr<D3D11Device> d3d11Device = std::make_unique<D3D11Device>(
+            nativeWindowHandle,
+            static_cast<UINT>(windowSize.width),
+            static_cast<UINT>(windowSize.height));
+
+        HDC hdc = GetDC(nativeWindowHandle);
+        if (!gladLoadWGL(hdc, glfwGetProcAddress))
+        {
+            LOG_ERROR << "Failed to initialize GLAD WGL logic";
+            return;
+        }
+
+        HANDLE wglDXDeviceHandle = NULL;
+
+        if (!GLAD_WGL_NV_DX_interop2)
+        {
+            LOG_ERROR << "Failed to initialize GLAD GLAD_WGL_NV_DX_interop2 extension";
+            return;
+        }
+
+        wglDXDeviceHandle = wglDXOpenDeviceNV(d3d11Device->getDevice().Get());
+
+        GLuint openGLTexture{ 0 };
+        GLuint openGLFrameBuffer{ 0 };
+        glGenTextures(1, &openGLTexture);
+        glGenFramebuffers(1, &openGLFrameBuffer);
+
+        glBindTexture(GL_TEXTURE_2D, openGLTexture);
+        /*
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1920, 1080, 0, GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
+        */
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        HANDLE glSharedTexture = wglDXRegisterObjectNV(
+            wglDXDeviceHandle,
+            d3d11Device->getClientSurface().Get(),
+            openGLTexture,
+            GL_TEXTURE_2D,
+            WGL_ACCESS_WRITE_DISCARD_NV
+        );
+
+        glBindFramebuffer(GL_FRAMEBUFFER, openGLFrameBuffer);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, openGLTexture, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+#endif
 
         const std::vector<MeshConfig>& meshConfigs = config.getMeshes();
 
@@ -346,8 +385,15 @@ namespace ZeroX
 
         while (m_runRenderer.load(std::memory_order_acquire))
         {
+#ifdef _WIN32
+            // A. LOCK OBJECT: Signal to driver that OpenGL is writing to the shared resource
+            wglDXLockObjectsNV(wglDXDeviceHandle, 1, &glSharedTexture);
+
+            // B. RENDER STEP: Render engine scene natively via standard OpenGL pipelines
+            glBindFramebuffer(GL_FRAMEBUFFER, openGLFrameBuffer);
+#endif
             renderer::Frame renderFrame;
-            if (frameBuffer->pop(renderFrame))
+            if (m_runRenderer.load(std::memory_order_acquire) && frameBuffer->pop(renderFrame))
             {
                 // TODO(Karim): Memory seems to be re-read a lot here. Establish what is needed!
                 renderer::processFrame(&renderAllocator, &renderFrame);
@@ -364,8 +410,20 @@ namespace ZeroX
 
             renderer::clearFrameBuffer();
             renderer::render(renderMemory, renderer::getPixelsPerUnit(clientSize.width, clientSize.height, worldDimensions));
-            window->swapBuffers();
 
+#ifdef _WIN32
+            // C. UNLOCK OBJECT: Hand resource context execution back over to Windows display server
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            wglDXUnlockObjectsNV(wglDXDeviceHandle, 1, &glSharedTexture);
+
+            // D. PRESENT: Bypass glfwSwapBuffers completely and deploy modern DXGI presentation
+            // Parameter 1 forces VSync via DXGI pacing queue, removing random windowed DWM judder
+            // dxgiSwapChain->Present(1, 0);
+            d3d11Device->copySurfaceToBackBuffer(static_cast<UINT>(clientSize.width), static_cast<UINT>(clientSize.height));
+            d3d11Device->getSwapChain()->Present(1, 0);
+#else
+            window->swapBuffers();
+#endif
             auto currentTimePoint       = std::chrono::steady_clock::now();
             int64_t microSecondsElapsed = std::chrono::duration_cast<std::chrono::microseconds>(currentTimePoint - startTimePoint).count();
 
@@ -380,5 +438,20 @@ namespace ZeroX
         }
 
         renderer::freeGraphicsResources(mutableGraphicsMemory);
+
+#ifdef _WIN32
+        if (wglDXDeviceHandle && glSharedTexture)
+        {
+            wglDXUnregisterObjectNV(wglDXDeviceHandle, glSharedTexture);
+        }
+
+        if (wglDXDeviceHandle)
+        {
+            wglDXCloseDeviceNV(wglDXDeviceHandle);
+        }
+
+        glDeleteFramebuffers(1, &openGLFrameBuffer);
+        glDeleteTextures(1, &openGLTexture);
+#endif
     }
 }
