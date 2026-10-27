@@ -116,26 +116,6 @@ namespace ZeroX
 			throw std::runtime_error("Failed to create GraphicsDevice");
 		}
 
-		D3D11_TEXTURE2D_DESC clientSurfaceDesc = {
-				.Width              = width,
-				.Height             = height,
-				.MipLevels          = 1,
-				.ArraySize          = 1,
-				.Format             = DXGI_FORMAT_B8G8R8A8_UNORM,
-				.SampleDesc			= { .Count = 1, .Quality = 0 },
-				.Usage              = D3D11_USAGE_DEFAULT,
-				.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
-				.CPUAccessFlags     = 0,
-				.MiscFlags          = 0
-		};
-
-		status = m_device->CreateTexture2D(&clientSurfaceDesc, nullptr, &m_clientSurface);
-
-		if (FAILED(status))
-		{
-			throw std::runtime_error("Failed to create DX11 surface texture");
-		}
-
 		initBlitPipeline();
 
 		createBuffersAndViews(width, height);
@@ -244,18 +224,20 @@ namespace ZeroX
 
 	void D3D11Device::createBuffersAndViews(UINT width, UINT height)
 	{
-		D3D11_TEXTURE2D_DESC stagingDesc = {};
-        stagingDesc.Width              = width;
-        stagingDesc.Height             = height;
-        stagingDesc.MipLevels          = 1;
-        stagingDesc.ArraySize          = 1;
-        stagingDesc.Format             = DXGI_FORMAT_B8G8R8A8_UNORM;
-        stagingDesc.SampleDesc.Count   = 1;
-        stagingDesc.SampleDesc.Quality = 0;
-        stagingDesc.Usage              = D3D11_USAGE_DEFAULT;
-        stagingDesc.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+		D3D11_TEXTURE2D_DESC clientSurfaceDesc = {
+				.Width              = width,
+				.Height             = height,
+				.MipLevels          = 1,
+				.ArraySize          = 1,
+				.Format             = DXGI_FORMAT_B8G8R8A8_UNORM,
+				.SampleDesc			= { .Count = 1, .Quality = 0 },
+				.Usage              = D3D11_USAGE_DEFAULT,
+				.BindFlags          = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+				.CPUAccessFlags     = 0,
+				.MiscFlags          = 0
+		};
 
-        HRESULT status = m_device->CreateTexture2D(&stagingDesc, nullptr, &m_clientSurface);
+        HRESULT status = m_device->CreateTexture2D(&clientSurfaceDesc, nullptr, &m_clientSurface);
         if (FAILED(status)) throw std::runtime_error("Failed to allocate interop staging texture resource");
 
 		status = m_device->CreateShaderResourceView(m_clientSurface.Get(), nullptr, &m_stagingSRV);

@@ -124,7 +124,12 @@ namespace ZeroX
         window->setResizeCallback([&](int width, int height) -> void {
             if (width <= 0 || height <= 0) { return; }
 
-            /*renderer::Frame frame;
+#ifdef _WIN32
+            m_resizeWidth.store(static_cast<UINT>(width), std::memory_order_release);
+            m_resizeHeight.store(static_cast<UINT>(height), std::memory_order_release);
+            m_resizeRequested.store(true, std::memory_order_release);
+#else
+            renderer::Frame frame;
             renderer::Command command{ .type = renderer::CommandType::SET_CLIENT_AREA };
             renderer::SetClientAreaCommand clientAreaCommand = {
                 .width  = static_cast<uint64_t>(width),
@@ -132,7 +137,8 @@ namespace ZeroX
             };
             std::memcpy(command.data, &clientAreaCommand, sizeof(renderer::SetClientAreaCommand));
             frame.renderCommands.push_back(command);
-            while (!renderFrameBuffer.push(frame)) { }*/
+            while (!renderFrameBuffer.push(frame)) { }
+#endif
         });
 
         monitorJoystickConnections();
@@ -363,9 +369,41 @@ namespace ZeroX
         uint64_t frameIndex{ 0 };
         auto startTimePoint = std::chrono::steady_clock::now();
 
+        GLint megaTextureId{ 0 };
+        glGetIntegerv(GL_TEXTURE_BINDING_2D, &megaTextureId);
+
         while (m_runRenderer.load(std::memory_order_acquire))
         {
 #ifdef _WIN32
+            if (m_resizeRequested.load(std::memory_order_acquire))
+            {
+                const UINT newWidth     = m_resizeWidth.load(std::memory_order_acquire);
+                const UINT newHeight    = m_resizeHeight.load(std::memory_order_acquire);
+
+                interopLayer.release();
+                renderer::destroyRenderBuffer(&renderBuffer);
+
+                d3d11Device->resizeBuffers(newWidth, newHeight);
+
+                renderer::initializeRenderBuffer(&renderBuffer);
+                renderer::setTextureParameters(renderBuffer.textureHandle, GL_TEXTURE_2D, &renderBufferParams, true);
+
+                interopLayer.initialize(renderBuffer, d3d11Device->getDevice().Get(), d3d11Device->getClientSurface().Get());
+                renderer::bindRenderBuffer(&renderBuffer);
+
+                glViewport(0, 0, static_cast<int>(newWidth), static_cast<int>(newHeight));
+                renderer::setCameraAspectRatio(mutableGraphicsMemory, static_cast<int>(newWidth), static_cast<int>(newHeight));
+
+                GLint currentTextureId{ 0 };
+                glGetIntegerv(GL_TEXTURE_BINDING_2D, &currentTextureId);
+                if (currentTextureId != megaTextureId)
+                {
+                    glBindTexture(GL_TEXTURE_2D, megaTextureId);
+                }
+
+                m_resizeRequested.store(false, std::memory_order_release);
+            }
+
             wglDXLockObjectsNV(interopLayer.getWGLDXDevice(), 1, &interopLayer.getWGLSharedTexture());
             glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer.frameBufferHandle);
 #endif
@@ -415,6 +453,8 @@ namespace ZeroX
 
 #ifdef _WIN32
         renderer::destroyRenderBuffer(&renderBuffer);
+
+        ReleaseDC(nativeWindowHandle, hdc);
 #endif
     }
 }

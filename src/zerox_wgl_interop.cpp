@@ -4,7 +4,11 @@
 
 namespace ZeroX
 {
-    WGLInterop::WGLInterop(const renderer::RenderBuffer& buffer, ID3D11Device* device, ID3D11Texture2D* clientSurface)
+    WGLInterop::WGLInterop(const renderer::RenderBuffer& buffer, ID3D11Device* device, ID3D11Texture2D* clientSurface) { initialize(buffer, device, clientSurface); }
+
+    WGLInterop::~WGLInterop() { release(); }
+
+    void WGLInterop::initialize(const renderer::RenderBuffer& buffer, ID3D11Device* device, ID3D11Texture2D* clientSurface)
     {
         if (!GLAD_WGL_NV_DX_interop2)
         {
@@ -21,7 +25,7 @@ namespace ZeroX
         );
     }
 
-    WGLInterop::~WGLInterop()
+    void WGLInterop::release() const
     {
         if (m_wglDXDeviceHandle && m_wglSharedTexture)
         {

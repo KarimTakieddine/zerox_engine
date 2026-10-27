@@ -14,6 +14,9 @@ namespace ZeroX
 		explicit WGLInterop(const renderer::RenderBuffer& buffer, ID3D11Device* device, ID3D11Texture2D* clientSurface);
 		~WGLInterop();
 
+		void initialize(const renderer::RenderBuffer& buffer, ID3D11Device* device, ID3D11Texture2D* clientSurface);
+		void release() const;
+
 		const HANDLE& getWGLDXDevice() const;
 		HANDLE& getWGLDXDevice();
 

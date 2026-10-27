@@ -25,5 +25,11 @@ namespace ZeroX
         std::atomic<uint64_t> m_renderFrameIndex{ 0 };
         std::atomic<double> m_frameDeltaTime    { 0.0 };
         std::atomic<bool> m_runRenderer         { true };
+
+#ifdef _WIN32
+        std::atomic<UINT> m_resizeWidth     { 0 };
+        std::atomic<UINT> m_resizeHeight    { 0 };
+        std::atomic<bool> m_resizeRequested { false };
+#endif
     };
 }
