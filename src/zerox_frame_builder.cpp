@@ -130,7 +130,7 @@ namespace ZeroX
 			const auto* renderMaterial = reinterpret_cast<const renderer::Material*>(gameMemory + cursor.getOffset());
 			cursor.step<renderer::Material>();
 
-			const auto* layer = reinterpret_cast<const uint64_t*>(gameMemory + cursor.getOffset() + sizeof(glm::vec2));
+			const auto* layer = reinterpret_cast<const uint64_t*>(gameMemory + cursor.getOffset() + 3 * sizeof(glm::vec2));
 
 			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_TRANSFORM, renderer::UpdateTransformCommand>({ *renderTransform, index, i }));
 			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_MATERIAL, renderer::UpdateMaterialCommand>({ *renderMaterial, index, i }));
