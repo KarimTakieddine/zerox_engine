@@ -3,6 +3,7 @@
 
 #include <glad/gl.h>
 
+#include <render_buffer.h>
 #include <render_command_types.h>
 #include <texture_array.h>
 
@@ -251,7 +252,7 @@ namespace ZeroX
             return;
         }
 
-        HANDLE wglDXDeviceHandle = NULL;
+        HANDLE wglDXDeviceHandle{ NULL };
 
         if (!GLAD_WGL_NV_DX_interop2)
         {
@@ -261,32 +262,27 @@ namespace ZeroX
 
         wglDXDeviceHandle = wglDXOpenDeviceNV(d3d11Device->getDevice().Get());
 
-        GLuint openGLTexture{ 0 };
-        GLuint openGLFrameBuffer{ 0 };
-        glGenTextures(1, &openGLTexture);
-        glGenFramebuffers(1, &openGLFrameBuffer);
+        renderer::RenderBuffer renderBuffer;
+        renderer::initializeRenderBuffer(&renderBuffer);
 
-        glBindTexture(GL_TEXTURE_2D, openGLTexture);
-        /*
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1920, 1080, 0, GL_BGRA, GL_UNSIGNED_BYTE, nullptr);
-        */
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glBindTexture(GL_TEXTURE_2D, 0);
+        renderer::TextureData renderBufferParams = {
+            .wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
+            .wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
+            .minFilter = renderer::Filter::LINEAR,
+            .magFilter = renderer::Filter::LINEAR
+        };
+
+        renderer::setTextureParameters(renderBuffer.textureHandle, GL_TEXTURE_2D, &renderBufferParams, true);
 
         HANDLE glSharedTexture = wglDXRegisterObjectNV(
             wglDXDeviceHandle,
             d3d11Device->getClientSurface().Get(),
-            openGLTexture,
+            renderBuffer.textureHandle,
             GL_TEXTURE_2D,
             WGL_ACCESS_WRITE_DISCARD_NV
         );
 
-        glBindFramebuffer(GL_FRAMEBUFFER, openGLFrameBuffer);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, openGLTexture, 0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        renderer::bindRenderBuffer(&renderBuffer);
 #endif
 
         const std::vector<MeshConfig>& meshConfigs = config.getMeshes();
@@ -390,7 +386,7 @@ namespace ZeroX
             wglDXLockObjectsNV(wglDXDeviceHandle, 1, &glSharedTexture);
 
             // B. RENDER STEP: Render engine scene natively via standard OpenGL pipelines
-            glBindFramebuffer(GL_FRAMEBUFFER, openGLFrameBuffer);
+            glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer.frameBufferHandle);
 #endif
             renderer::Frame renderFrame;
             if (m_runRenderer.load(std::memory_order_acquire) && frameBuffer->pop(renderFrame))
@@ -450,8 +446,7 @@ namespace ZeroX
             wglDXCloseDeviceNV(wglDXDeviceHandle);
         }
 
-        glDeleteFramebuffers(1, &openGLFrameBuffer);
-        glDeleteTextures(1, &openGLTexture);
+        renderer::destroyRenderBuffer(&renderBuffer);
 #endif
     }
 }
