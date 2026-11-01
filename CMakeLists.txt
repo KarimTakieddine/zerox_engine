@@ -18,6 +18,9 @@ set(PUGIXML_DIR "${CMAKE_CURRENT_SOURCE_DIR}/pugixml")
 
 Project(${PROJECT_NAME})
 
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../zerox_memory_bridge/install")
+find_package(zerox_memory_bridge CONFIG REQUIRED)
+
 add_subdirectory(${PLATFORM_DIR})
 add_subdirectory(${RENDERER_DIR})
 
@@ -54,9 +57,6 @@ elseif (LINUX)
     find_package(glfw3 3.4 REQUIRED)
 endif()
 
-set(zerox_memory_bridge_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../zerox_memory_bridge/install/share/cmake/zerox_memory_bridge")
-find_package(zerox_memory_bridge CONFIG REQUIRED)
-
 add_subdirectory(${PUGIXML_DIR})
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -68,7 +68,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${MEMORY_READER_DIR}/include
     ${PUGIXML_DIR}/src)
 
-list(APPEND ZEROX_STATIC_LIBS
+list(APPEND ZEROX_LIB_DEPENDENCIES
     zerox_engine_platform
     zerox_engine_renderer
     zerox_memory_bridge::zerox_memory_bridge
@@ -77,10 +77,10 @@ list(APPEND ZEROX_STATIC_LIBS
 )
 
 if (WIN32)
-    list (APPEND ZEROX_STATIC_LIBS D3D11 D3DCOMPILER DXGI)
+    list (APPEND ZEROX_LIB_DEPENDENCIES D3D11 D3DCOMPILER DXGI)
 endif()
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${ZEROX_STATIC_LIBS})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${ZEROX_LIB_DEPENDENCIES})
 
 add_custom_command(TARGET Assets POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/${AUDIO_DIR}" $<TARGET_FILE_DIR:${PROJECT_NAME}>/${AUDIO_DIR}

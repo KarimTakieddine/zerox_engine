@@ -2,6 +2,8 @@
 
 #include <memory_cursor.hpp>
 
+#include <zerox_render_entity.h>
+
 #include <render_batch.h>
 #include <render_command_types.h>
 
@@ -124,21 +126,15 @@ namespace ZeroX
 
 			MemoryCursor<16> cursor(readDescriptor->start + readDescriptor->offset);
 
-			const auto* renderTransform = reinterpret_cast<const renderer::Transform*>(gameMemory + cursor.getOffset());
-			cursor.step<renderer::Transform>();
+			const auto* renderEntity = reinterpret_cast<const ZeroXBridge::RenderEntity*>(gameMemory + cursor.getOffset());
 
-			const auto* renderMaterial = reinterpret_cast<const renderer::Material*>(gameMemory + cursor.getOffset());
-			cursor.step<renderer::Material>();
-
-			const auto* layer = reinterpret_cast<const uint64_t*>(gameMemory + cursor.getOffset() + 3 * sizeof(glm::vec2));
-
-			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_TRANSFORM, renderer::UpdateTransformCommand>({ *renderTransform, index, i }));
-			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_MATERIAL, renderer::UpdateMaterialCommand>({ *renderMaterial, index, i }));
+			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_TRANSFORM, renderer::UpdateTransformCommand>({ renderEntity->transform, index, i }));
+			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_MATERIAL, renderer::UpdateMaterialCommand>({ renderEntity->material, index, i }));
 
 			renderer::SetTextureLayerCommand command;
 			command.batchIndex	= index;
 			command.entityIndex = i;
-			command.layer		= *layer;
+			command.layer		= renderEntity->layer;
 			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::SET_TEXTURE_LAYER, renderer::SetTextureLayerCommand>(command));
 		}
 	}
@@ -151,14 +147,10 @@ namespace ZeroX
 
 			MemoryCursor<16> cursor(readDescriptor->start + readDescriptor->offset);
 
-			const auto* renderTransform = reinterpret_cast<const renderer::Transform*>(gameMemory + cursor.getOffset());
-			cursor.step<renderer::Transform>();
+			const auto* renderEntity = reinterpret_cast<const ZeroXBridge::RenderEntity*>(gameMemory + cursor.getOffset());
 
-			const auto* renderMaterial = reinterpret_cast<const renderer::Material*>(gameMemory + cursor.getOffset());
-			cursor.step<renderer::Material>();
-
-			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_TRANSFORM, renderer::UpdateTransformCommand>({ *renderTransform, index, i }));
-			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_MATERIAL, renderer::UpdateMaterialCommand>({ *renderMaterial, index, i }));
+			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_TRANSFORM, renderer::UpdateTransformCommand>({ renderEntity->transform, index, i }));
+			m_frame.renderCommands.push_back(::buildRenderCommand<renderer::CommandType::UPDATE_ENTITY_MATERIAL, renderer::UpdateMaterialCommand>({ renderEntity->material, index, i }));
 		}
 	}
 }
