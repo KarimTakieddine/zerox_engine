@@ -50,6 +50,7 @@ namespace ZeroX
 			processBackgroundSection(gameMemory, section, index);
 			break;
 		case EntitySectionType::SPRITE:
+		case EntitySectionType::TILED_SPRITE:
 		case EntitySectionType::COLLIDER:
 			processSpriteSection(gameMemory, section, index);
 			break;
@@ -88,6 +89,22 @@ namespace ZeroX
 			m_frame.renderCommands.push_back(
 				::buildRenderCommand<renderer::CommandType::ALLOCATE_RENDER_BATCH, renderer::AllocateBatchCommand>({
 					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::SPRITE),
+					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
+					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::SPRITE),
+					.meshIndex			= map.getMeshIndex(MeshType::QUAD),
+					.entityCount		= section.descriptorCount,
+					.drawMode			= static_cast<uint64_t>(renderer::DrawMode::TRIANGLES)
+				}));
+
+			section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
+
+			break;
+		}
+		case EntitySectionType::TILED_SPRITE:
+		{
+			m_frame.renderCommands.push_back(
+				::buildRenderCommand<renderer::CommandType::ALLOCATE_RENDER_BATCH, renderer::AllocateBatchCommand>({
+					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::TILED_SPRITE),
 					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
 					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::SPRITE),
 					.meshIndex			= map.getMeshIndex(MeshType::QUAD),

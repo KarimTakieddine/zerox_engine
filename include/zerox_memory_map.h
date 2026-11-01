@@ -15,12 +15,13 @@ namespace ZeroX
 
 	enum class ShaderProgramType : uint8_t
 	{
-		UNKNOWN		= 0,
-		UNLIT_COLOR	= 1,
-		BACKGROUND	= 2,
-		SPRITE		= 3,
-		COLLIDER	= 4,
-		LAST		= COLLIDER
+		UNKNOWN			= 0,
+		UNLIT_COLOR		= 1,
+		BACKGROUND		= 2,
+		SPRITE			= 3,
+		TILED_SPRITE	= 4,
+		COLLIDER		= 5,
+		LAST			= COLLIDER
 	};
 
 	enum class VertexArrayType : uint8_t

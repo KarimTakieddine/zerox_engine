@@ -102,7 +102,7 @@ namespace ZeroX
         GameLibrary* gameLibrary = gameLibraryFuture.get();
 
         BumpAllocator<16> gameAllocator;
-        gameAllocator.allocate(4096);
+        gameAllocator.allocate(8192);
 
         auto* input = gameAllocator.requestMemory<Input>();
 

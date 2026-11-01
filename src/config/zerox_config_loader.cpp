@@ -93,7 +93,7 @@ namespace ZeroX
 
 				config.setVertexArrayCount(2);
 
-				config.setShaderProgramCount(4);
+				config.setShaderProgramCount(5);
 
 				ShaderProgramConfig unlitColorProgram = {
 					.shaders = {
@@ -116,6 +116,13 @@ namespace ZeroX
 					}
 				};
 
+				ShaderProgramConfig tiledSpriteProgram = {
+					.shaders = {
+						{ "./shaders/tiled_sprite/vertex.slh", renderer::Shader::Type::VERTEX },
+						{ "./shaders/tiled_sprite/fragment.slh", renderer::Shader::Type::FRAGMENT }
+					}
+				};
+
 				ShaderProgramConfig colliderProgram = {
 					.shaders = {
 						{ "./shaders/collider/vertex.slh", renderer::Shader::Type::VERTEX },
@@ -126,6 +133,7 @@ namespace ZeroX
 				config.addShaderProgram(unlitColorProgram);
 				config.addShaderProgram(backgroundProgram);
 				config.addShaderProgram(spriteProgram);
+				config.addShaderProgram(tiledSpriteProgram);
 				config.addShaderProgram(colliderProgram);
 
 				config.setCameraEye({
@@ -154,7 +162,8 @@ namespace ZeroX
 					{ .locationsIndex = 0, .shaderProgramIndex = 0 },
 					{ .locationsIndex = 1, .shaderProgramIndex = 1 },
 					{ .locationsIndex = 2, .shaderProgramIndex = 2 },
-					{ .locationsIndex = 3, .shaderProgramIndex = 3 }
+					{ .locationsIndex = 3, .shaderProgramIndex = 3 },
+					{ .locationsIndex = 4, .shaderProgramIndex = 4 }
 				});
 
 				config.setTextureCount(1);
@@ -200,8 +209,11 @@ namespace ZeroX
 				memoryMap.mapShaderProgram(2, ShaderProgramType::SPRITE);
 				memoryMap.mapLocationsDescriptor(2, ShaderProgramType::SPRITE);
 
-				memoryMap.mapShaderProgram(3, ShaderProgramType::COLLIDER);
-				memoryMap.mapLocationsDescriptor(3, ShaderProgramType::COLLIDER);
+				memoryMap.mapShaderProgram(3, ShaderProgramType::TILED_SPRITE);
+				memoryMap.mapLocationsDescriptor(3, ShaderProgramType::TILED_SPRITE);
+
+				memoryMap.mapShaderProgram(4, ShaderProgramType::COLLIDER);
+				memoryMap.mapLocationsDescriptor(4, ShaderProgramType::COLLIDER);
 
 				return std::make_pair(config, memoryMap);
 			}
