@@ -13,7 +13,7 @@ uniform sampler2D textureSampler;
 out vec4 oColor;
 
 void main() {
-    vec2 localTiledUV = fract(vertexUV * vec2(tileSize) * 2);
+    vec2 localTiledUV = fract(vertexUV * vec2(tileSize));
 
     vec2 scaledLocalUV = localTiledUV * uvScale;
 
