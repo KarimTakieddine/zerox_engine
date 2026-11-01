@@ -106,7 +106,7 @@ namespace ZeroX
 				::buildRenderCommand<renderer::CommandType::ALLOCATE_RENDER_BATCH, renderer::AllocateBatchCommand>({
 					.shaderProgramIndex = map.getShaderProgramIndex(ShaderProgramType::TILED_SPRITE),
 					.vertexArrayIndex	= map.getVertexArrayIndex(VertexArrayType::TEXTURED_QUAD),
-					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::SPRITE),
+					.locationsIndex		= map.getLocationsDescriptorIndex(ShaderProgramType::TILED_SPRITE),
 					.meshIndex			= map.getMeshIndex(MeshType::QUAD),
 					.entityCount		= section.descriptorCount,
 					.drawMode			= static_cast<uint64_t>(renderer::DrawMode::TRIANGLES)

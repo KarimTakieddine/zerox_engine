@@ -4,6 +4,8 @@ in vec3 vertexColor;
 in vec2 vertexUV;
 
 uniform vec4 materialColor;
+uniform vec2 uvScale;
+uniform uvec2 tileSize;
 uniform vec2 textureOffset;
 
 uniform sampler2D textureSampler;
@@ -11,5 +13,14 @@ uniform sampler2D textureSampler;
 out vec4 oColor;
 
 void main() {
-    oColor = texture(textureSampler, vertexUV + textureOffset) * materialColor;
+    vec2 localTiledUV = fract(vertexUV * vec2(tileSize) * 2);
+
+    vec2 scaledLocalUV = localTiledUV * uvScale;
+
+    vec2 finalUV = scaledLocalUV + textureOffset;
+
+    vec2 dx = dFdx(vertexUV * uvScale);
+    vec2 dy = dFdy(vertexUV * uvScale);
+
+    oColor = textureGrad(textureSampler, finalUV, dx, dy) * materialColor;
 }
