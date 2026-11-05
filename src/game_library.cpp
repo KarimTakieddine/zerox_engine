@@ -20,6 +20,7 @@ namespace ZeroX
 
         m_functions = {
             .initGame               = (GameLibraryFunctions::GameInitFunc)platform::loadLibraryFunction(m_handle, "initializeGame"),
+            .loadLevel              = (GameLibraryFunctions::GameLoadLevelFunc)platform::loadLibraryFunction(m_handle, "loadLevel"),
             .updateGame             = (GameLibraryFunctions::GameUpdateFunc)platform::loadLibraryFunction(m_handle, "updateGame"),
             .initRenderDescriptor   = (GameLibraryFunctions::RenderDescriptorFunc)platform::loadLibraryFunction(m_handle, "initializeRenderDescriptor")
         };
@@ -41,6 +42,7 @@ namespace ZeroX
     {
         return
             m_functions.initGame &&
+            m_functions.loadLevel &&
             m_functions.updateGame &&
             m_functions.initRenderDescriptor;
     }

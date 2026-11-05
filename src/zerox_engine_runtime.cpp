@@ -104,15 +104,19 @@ namespace ZeroX
         BumpAllocator<16> gameAllocator;
         gameAllocator.allocate(8192);
 
-        auto* input = gameAllocator.requestMemory<Input>();
-
-        if (!gameLibrary->getFunctions().initGame(&gameAllocator))
+        ZeroXBridge::GameContext gameContext = gameLibrary->getFunctions().initGame(&gameAllocator);
+        if (!gameContext.input || !gameContext.levels || gameContext.levelCount == 0)
         {
             LOG_WARN << "Failed to initialize game library";
         }
         else
         {
             LOG_INFO << "Successfully intialized game library. Monitoring file updates";
+        }
+
+        if (!gameLibrary->getFunctions().loadLevel(&gameContext, &gameAllocator, 0))
+        {
+            LOG_WARN << "Failed to load level at index 0";
         }
 
         GameLibraryWatcher* gameLibraryWatcher = gameLibraryWatcherFuture.get();
@@ -151,7 +155,7 @@ namespace ZeroX
         {
             window->processEvents();
 
-            updateInput(input);
+            updateInput(gameContext.input);
 
             const uint64_t changeCounter = gameLibraryWatcher->getChangeCounter();
             if (changeCounter != libraryChangeCounter)
