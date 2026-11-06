@@ -105,7 +105,7 @@ namespace ZeroX
         gameAllocator.allocate(8192);
 
         ZeroXBridge::GameContext gameContext = gameLibrary->getFunctions().initGame(&gameAllocator);
-        if (!gameContext.input || !gameContext.levels || gameContext.levelCount == 0)
+        if (!gameContext.input)
         {
             LOG_WARN << "Failed to initialize game library";
         }
