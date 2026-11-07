@@ -102,7 +102,7 @@ namespace ZeroX
         GameLibrary* gameLibrary = gameLibraryFuture.get();
 
         BumpAllocator<16> gameAllocator;
-        gameAllocator.allocate(8192);
+        gameAllocator.allocate(16384);
 
         ZeroXBridge::GameContext gameContext = gameLibrary->getFunctions().initGame(&gameAllocator);
         if (!gameContext.input)
