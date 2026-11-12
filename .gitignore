@@ -5,3 +5,7 @@
 /config/
 
 **/*Zone\.Identifier
+
+**/*.png
+
+!textures/the_mega_texture.png
