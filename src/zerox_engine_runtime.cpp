@@ -5,7 +5,7 @@
 
 #include <render_buffer.h>
 #include <render_command_types.h>
-#include <texture_array.h>
+#include <renderer.hpp>
 
 #include "config/zerox_config_loader.h"
 #include "zerox_engine_input.h"
@@ -265,11 +265,11 @@ namespace ZeroX
         renderer::RenderBuffer renderBuffer;
         renderer::initializeRenderBuffer(&renderBuffer);
 
-        renderer::TextureData renderBufferParams = {
-            .wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
-            .wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
-            .minFilter = renderer::Filter::LINEAR,
-            .magFilter = renderer::Filter::LINEAR
+        ZeroXBridge::Texture renderBufferParams = {
+            .wrapModeS = ZeroXBridge::TextureWrapMode::CLAMP_TO_EDGE,
+            .wrapModeT = ZeroXBridge::TextureWrapMode::CLAMP_TO_EDGE,
+            .minFilter = ZeroXBridge::TextureFilter::LINEAR,
+            .magFilter = ZeroXBridge::TextureFilter::LINEAR
         };
 
         renderer::setTextureParameters(renderBuffer.textureHandle, GL_TEXTURE_2D, &renderBufferParams, true);
@@ -332,9 +332,9 @@ namespace ZeroX
         for (const auto& textureArray : config.getTextureArrays())
         {
             textureArrays.emplace_back(renderer::TextureArray{
-                .data       = textureArray.data,
-                .imageFiles = textureArray.textureFiles.data(),
-                .imageCount = textureArray.textureFiles.size()
+                .data           = textureArray.data,
+                .paths          = textureArray.textureFiles.data(),
+                .textureCount   = textureArray.textureFiles.size()
             });
         }
 

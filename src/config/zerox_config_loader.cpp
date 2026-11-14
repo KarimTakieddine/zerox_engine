@@ -1,5 +1,7 @@
 #include <stdexcept>
 
+#include <shader.h>
+
 #include "config/zerox_config_loader.h"
 #include "config/zerox_config_parser.h"
 
@@ -169,10 +171,10 @@ namespace ZeroX
 				config.setTextureCount(1);
 				renderer::Texture megaTexture = {
 					.data = {
-						.wrapModeS = renderer::WrapMode::CLAMP_TO_EDGE,
-						.wrapModeT = renderer::WrapMode::CLAMP_TO_EDGE,
-						.minFilter = renderer::Filter::NEAREST,
-						.magFilter = renderer::Filter::NEAREST
+						.wrapModeS = ZeroXBridge::TextureWrapMode::CLAMP_TO_EDGE,
+						.wrapModeT = ZeroXBridge::TextureWrapMode::CLAMP_TO_EDGE,
+						.minFilter = ZeroXBridge::TextureFilter::NEAREST,
+						.magFilter = ZeroXBridge::TextureFilter::NEAREST
 					},
 					.path = "./textures/the_mega_texture.png"
 				};
@@ -185,12 +187,12 @@ namespace ZeroX
 						"./textures/test_background_1.png"
 					},
 					.data = {
-						.wrapModeS	= renderer::WrapMode::REPEAT,
-						.wrapModeT	= renderer::WrapMode::REPEAT,
-						.minFilter	= renderer::Filter::LINEAR,
-						.magFilter	= renderer::Filter::LINEAR,
 						.width		= 1920,
-						.height		= 1080
+						.height		= 1080,
+						.wrapModeS	= ZeroXBridge::TextureWrapMode::REPEAT,
+						.wrapModeT	= ZeroXBridge::TextureWrapMode::REPEAT,
+						.minFilter	= ZeroXBridge::TextureFilter::LINEAR,
+						.magFilter	= ZeroXBridge::TextureFilter::LINEAR
 					}
 				};
 				config.addTextureArray(backgroundArrayConfig);

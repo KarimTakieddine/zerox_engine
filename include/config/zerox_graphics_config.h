@@ -3,12 +3,8 @@
 #include <string>
 #include <vector>
 
-#include <eye.h>
-#include <frustum.h>
 #include <renderer.hpp>
 #include <shader.h>
-#include <texture_data.h>
-#include <texture.h>
 
 namespace ZeroX
 {
@@ -32,7 +28,7 @@ namespace ZeroX
 	struct TextureArrayConfig
 	{
 		std::vector<const char*> textureFiles	{ };
-		renderer::TextureData data				{ };
+		ZeroXBridge::Texture data				{ };
 	};
 
 	class GraphicsConfig
