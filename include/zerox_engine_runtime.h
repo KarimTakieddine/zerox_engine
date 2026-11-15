@@ -1,12 +1,12 @@
 #pragma once
 
-#include <render_frame_buffer.h>
-
 #include "config/zerox_graphics_config.h"
 #include "zerox_engine_context.h"
 
 namespace ZeroX
 {
+    struct CommandPool;
+
     class EngineRuntime
     {
     public:
@@ -16,7 +16,7 @@ namespace ZeroX
         void load(const char* configPath);
 
     private:
-        void render(const GraphicsConfig& config, IWindow* window, renderer::FrameBuffer* frameBuffer);
+        void render(const GraphicsConfig& config, IWindow* window, CommandPool* commandPool);
         void stopRendering();
 
         std::unique_ptr<EngineContext> m_context{ nullptr };

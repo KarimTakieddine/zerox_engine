@@ -2,7 +2,6 @@
 #include <GLFW/glfw3.h>
 
 #include <renderer.hpp>
-#include <render_frame_buffer.h>
 #include <mesh.hpp>
 #include <shader.h>
 

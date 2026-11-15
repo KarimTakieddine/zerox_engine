@@ -8,10 +8,11 @@
 #include <renderer.hpp>
 
 #include "config/zerox_config_loader.h"
+#include "zerox_command_builder.h"
+#include "zerox_command_pool.h"
 #include "zerox_engine_input.h"
 #include "zerox_engine_logger.h"
 #include "zerox_engine_runtime.h"
-#include "zerox_frame_builder.h"
 #include "zerox_glfw_window.h"
 #include "zerox_memory_map.h"
 #include "zerox_miniaudio_player.h"
@@ -90,14 +91,14 @@ namespace ZeroX
         IWindow* window = windowFuture.get();
         LOG_INFO << "Successfully intialized Window instance. Starting rendering thread";
 
-        renderer::FrameBuffer renderFrameBuffer;
-        renderFrameBuffer.allocate(64);
+        CommandPool renderCommandPool;
+        renderCommandPool.allocate(64);
         
         auto graphicsPair = graphicsFuture.get();
 
         m_rendererThread = std::thread(
             &EngineRuntime::render,
-            this, graphicsPair.first, window, &renderFrameBuffer);
+            this, graphicsPair.first, window, &renderCommandPool);
 
         GameLibrary* gameLibrary = gameLibraryFuture.get();
 
@@ -201,10 +202,11 @@ namespace ZeroX
             gameLibrary->getFunctions().updateGame(&gameAllocator, frameDeltaTime);
            
             const RenderDescriptor renderDescriptor = gameLibrary->getFunctions().initRenderDescriptor(&gameAllocator);
-            FrameBuilder frameBuilder;
-            frameBuilder.processRenderDescriptor(reinterpret_cast<const std::byte*>(gameAllocator.peek()), graphicsMemoryMap, renderDescriptor);
 
-            while (!renderFrameBuffer.push(frameBuilder.getFrame()))
+            CommandBufferBuilder bufferBuilder;
+            bufferBuilder.processRenderDescriptor(reinterpret_cast<const std::byte*>(gameAllocator.peek()), graphicsMemoryMap, renderDescriptor);
+
+            while (!renderCommandPool.push(bufferBuilder.getBuffer()))
             {
 
             }
@@ -225,7 +227,7 @@ namespace ZeroX
         }
     }
 
-    void EngineRuntime::render(const GraphicsConfig& config, IWindow* window, renderer::FrameBuffer* frameBuffer)
+    void EngineRuntime::render(const GraphicsConfig& config, IWindow* window, CommandPool* commandPool)
     {
         window->bindGraphicsContext();
 
@@ -411,10 +413,36 @@ namespace ZeroX
             wglDXLockObjectsNV(interopLayer.getWGLDXDevice(), 1, &interopLayer.getWGLSharedTexture());
             glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer.frameBufferHandle);
 #endif
-            renderer::Frame renderFrame;
-            if (m_runRenderer.load(std::memory_order_acquire) && frameBuffer->pop(renderFrame))
+            CommandBuffer commandBuffer;
+            if (m_runRenderer.load(std::memory_order_acquire) && commandPool->pop(commandBuffer))
             {
-                renderer::processFrame(&renderAllocator, &renderFrame);
+                for (const auto& command : commandBuffer.commands)
+                {
+                    std::span<const std::byte> paramsSpan(command.paramData.data(), command.paramData.size());
+                    ConstMemoryView paramsView(paramsSpan);
+
+                    switch (command.type)
+                    {
+                    case CommandType::ALLOCATE_RENDER_BATCH:
+                        renderer::handleAllocateBatchCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::AllocateBatchCommand>(0).data());
+                        mutableGraphicsMemory = renderer::readGraphicsMemory(&renderAllocator);
+                        break;
+                    case CommandType::UPDATE_ENTITY_TRANSFORM:
+                        renderer::handleUpdateTransformCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::UpdateTransformCommand>(0).data());
+                        break;
+                    case CommandType::UPDATE_ENTITY_MATERIAL:
+                        renderer::handleUpdateMaterialCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::UpdateMaterialCommand>(0).data());
+                        break;
+                    case CommandType::SET_TEXTURE_LAYER:
+                        renderer::handleSetTextureLayerCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::SetTextureLayerCommand>(0).data());
+                        break;
+                    case CommandType::SET_CLIENT_AREA:
+                        renderer::handleSetClientAreaCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::SetClientAreaCommand>(0).data());
+                        break;
+                    default:
+                        break;
+                    }
+                }
             }
 
             renderer::ConstGraphicsMemory renderMemory = renderer::readGraphicsMemory<true>(&renderAllocator);
