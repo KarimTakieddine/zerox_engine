@@ -19,6 +19,15 @@ namespace ZeroX
 
 		const CommandBuffer& getBuffer() const;
 
+		template<CommandType C, typename Params>
+		void addCommand(const Params& params)
+		{
+			RenderCommand renderCommand{ .type = C };
+			renderCommand.paramData.resize(sizeof(Params));
+			std::memcpy(renderCommand.paramData.data(), &params, sizeof(Params));
+			m_buffer.commands.push_back(std::move(renderCommand));
+		}
+
 	private:
 		void processEntitySection(const std::byte* gameMemory, const MemoryMap& map, EntitySection& section, uint64_t index);
 		void allocateEntitySection(const MemoryMap& map, EntitySection& section);

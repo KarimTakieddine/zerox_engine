@@ -127,37 +127,24 @@ namespace ZeroX
 			const auto* renderEntity = reinterpret_cast<const ZeroXBridge::RenderEntity*>(
 				gameMemory + readDescriptor->start + readDescriptor->offset);
 
-			renderer::UpdateTransformCommand updateTransformParams{
+			addCommand<CommandType::UPDATE_ENTITY_TRANSFORM>(renderer::UpdateTransformCommand{
 				.transform		= renderEntity->transform,
 				.batchIndex		= index,
 				.entityIndex	= i
-			};
+			});
 
-			RenderCommand updateTransformCommand{ .type = CommandType::UPDATE_ENTITY_TRANSFORM };
-			updateTransformCommand.paramData.resize(sizeof(renderer::UpdateTransformCommand));
-			std::memcpy(updateTransformCommand.paramData.data(), &updateTransformParams, sizeof(renderer::UpdateTransformCommand));
-			m_buffer.commands.push_back(std::move(updateTransformCommand));
-
-			renderer::UpdateMaterialCommand updateMaterialParams{
+			addCommand<CommandType::UPDATE_ENTITY_MATERIAL>(renderer::UpdateMaterialCommand{
 				.material		= renderEntity->material,
 				.batchIndex		= index,
 				.entityIndex	= i
-			};
-
-			RenderCommand updateMaterialCommand{ .type = CommandType::UPDATE_ENTITY_MATERIAL };
-			updateMaterialCommand.paramData.resize(sizeof(renderer::UpdateMaterialCommand));
-			std::memcpy(updateMaterialCommand.paramData.data(), &updateMaterialParams, sizeof(renderer::UpdateMaterialCommand));
-			m_buffer.commands.push_back(std::move(updateMaterialCommand));
+			});
 
 			renderer::SetTextureLayerCommand setTextureLayerParams;
 			setTextureLayerParams.batchIndex	= index;
 			setTextureLayerParams.entityIndex	= i;
 			setTextureLayerParams.layer			= renderEntity->layer;
 
-			RenderCommand setTextureLayerCommand{ .type = CommandType::SET_TEXTURE_LAYER };
-			setTextureLayerCommand.paramData.resize(sizeof(renderer::SetTextureLayerCommand));
-			std::memcpy(setTextureLayerCommand.paramData.data(), &setTextureLayerParams, sizeof(renderer::SetTextureLayerCommand));
-			m_buffer.commands.push_back(std::move(setTextureLayerCommand));
+			addCommand<CommandType::SET_TEXTURE_LAYER>(setTextureLayerParams);
 		}
 	}
 
@@ -169,27 +156,17 @@ namespace ZeroX
 
 			const auto* renderEntity = reinterpret_cast<const ZeroXBridge::RenderEntity*>(gameMemory + readDescriptor->start + readDescriptor->offset);
 
-			renderer::UpdateTransformCommand updateTransformParams{
+			addCommand<CommandType::UPDATE_ENTITY_TRANSFORM>(renderer::UpdateTransformCommand{
 				.transform		= renderEntity->transform,
 				.batchIndex		= index,
 				.entityIndex	= i
-			};
+			});
 
-			RenderCommand updateTransformCommand{ .type = CommandType::UPDATE_ENTITY_TRANSFORM };
-			updateTransformCommand.paramData.resize(sizeof(renderer::UpdateTransformCommand));
-			std::memcpy(updateTransformCommand.paramData.data(), &updateTransformParams, sizeof(renderer::UpdateTransformCommand));
-			m_buffer.commands.push_back(std::move(updateTransformCommand));
-
-			renderer::UpdateMaterialCommand updateMaterialParams{
+			addCommand<CommandType::UPDATE_ENTITY_MATERIAL>(renderer::UpdateMaterialCommand{
 				.material		= renderEntity->material,
 				.batchIndex		= index,
 				.entityIndex	= i
-			};
-
-			RenderCommand updateMaterialCommand{ .type = CommandType::UPDATE_ENTITY_MATERIAL };
-			updateMaterialCommand.paramData.resize(sizeof(renderer::UpdateMaterialCommand));
-			std::memcpy(updateMaterialCommand.paramData.data(), &updateMaterialParams, sizeof(renderer::UpdateMaterialCommand));
-			m_buffer.commands.push_back(std::move(updateMaterialCommand));
+			});
 		}
 	}
 }
