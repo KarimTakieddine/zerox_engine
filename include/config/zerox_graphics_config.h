@@ -10,7 +10,7 @@ namespace ZeroX
 {
 	struct ShaderProgramConfig
 	{
-		std::vector<renderer::Shader> shaders;
+		std::vector<renderer::ShaderLoadInfo> shaders;
 	};
 
 	struct MeshConfig

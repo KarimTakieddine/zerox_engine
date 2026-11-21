@@ -95,7 +95,7 @@ namespace ZeroX
 
 				config.setVertexArrayCount(2);
 
-				config.setShaderProgramCount(5);
+				/*config.setShaderProgramCount(5);
 
 				ShaderProgramConfig unlitColorProgram = {
 					.shaders = {
@@ -136,7 +136,7 @@ namespace ZeroX
 				config.addShaderProgram(backgroundProgram);
 				config.addShaderProgram(spriteProgram);
 				config.addShaderProgram(tiledSpriteProgram);
-				config.addShaderProgram(colliderProgram);
+				config.addShaderProgram(colliderProgram);*/
 
 				config.setCameraEye({
 					.position	= glm::vec3{ 0.0f, 0.0f, 10.0f },
