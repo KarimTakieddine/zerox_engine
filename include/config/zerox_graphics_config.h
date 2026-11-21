@@ -8,21 +8,10 @@
 
 namespace ZeroX
 {
-	struct ShaderProgramConfig
-	{
-		std::vector<renderer::ShaderLoadInfo> shaders;
-	};
-
 	struct MeshConfig
 	{
 		std::vector<renderer::Vertex> vertices;
 		std::vector<unsigned int> triangles;
-	};
-
-	struct ShaderCompileConfig
-	{
-		std::vector<size_t> shaderIndices	{ 0 };
-		size_t programIndex					{ 0 };
 	};
 
 	struct TextureArrayConfig
@@ -39,11 +28,6 @@ namespace ZeroX
 		const MeshConfig& getMesh(size_t index) const;
 		const std::vector<MeshConfig>& getMeshes() const;
 
-		void setShaderProgramCount(size_t count);
-		void addShaderProgram(const ShaderProgramConfig& config);
-		const ShaderProgramConfig& getShaderProgram(size_t index) const;
-		const std::vector<ShaderProgramConfig>& getShaderPrograms() const;
-
 		void setTextureCount(size_t count);
 		void addTexture(const renderer::Texture& texture);
 		const renderer::Texture& getTexture(size_t index) const;
@@ -57,9 +41,6 @@ namespace ZeroX
 		void setCameraUniformNames(const std::vector<const char*>& names);
 		const std::vector<const char*>& getCameraUniformNames() const;
 
-		void setShaderLocationsLinks(const std::vector<renderer::ShaderLocationsLink>& links);
-		const std::vector<renderer::ShaderLocationsLink>& getShaderLocationsLinks() const;
-
 		const std::string& getCameraUniformBuffer() const;
 		void setCameraUniformBuffer(const std::string& name);
 
@@ -72,14 +53,10 @@ namespace ZeroX
 		void setVertexArrayCount(size_t count);
 		size_t getVertexArrayCount() const;
 
-		std::vector<ShaderCompileConfig> getShaderCompileSteps() const;
-
 	private:
 		std::vector<MeshConfig> m_meshes;
-		std::vector<ShaderProgramConfig> m_shaderPrograms;
 		std::vector<renderer::Texture> m_textures;
 		std::vector<TextureArrayConfig> m_textureArrays;
-		std::vector<renderer::ShaderLocationsLink> m_locationsLinks;
 		std::vector<const char*> m_cameraUniformNames;
 		std::string m_cameraUniformBuffer;
 		renderer::Eye m_cameraEye;

@@ -387,8 +387,7 @@ namespace ZeroX
             );
         }*/
 
-        const std::vector<renderer::ShaderLocationsLink>& shaderLocationsLinks  = config.getShaderLocationsLinks();
-        const std::vector<renderer::Texture>& textures                          = config.getTextures();
+        const std::vector<renderer::Texture>& textures = config.getTextures();
 
         std::vector<renderer::TextureArray> textureArrays;
         textureArrays.reserve(config.getTextureArrays().size());
@@ -410,7 +409,6 @@ namespace ZeroX
             .cameraUniformBuffer        = config.getCameraUniformBuffer().data(),
             .cameraUniformNames         = config.getCameraUniformNames().data(),
             .shaderCompileSteps         = shaderCompileSteps.data(),
-            .shaderLocationsLinks       = shaderLocationsLinks.data(),
             .textureArrays              = textureArrays.data(),
             .meshCount                  = meshes.size(),
             .bufferCount                = 5,
@@ -419,9 +417,7 @@ namespace ZeroX
             .textureArrayCount          = textureArrays.size(),
             .shaderCount                = shaders.size(),
             .shaderProgramCount         = shaderCompileSteps.size(),
-            .locationsDescriptorCount   = shaderLocationsLinks.size(),
-            .compileStepCount           = shaderCompileSteps.size(),
-            .locationsLinkCount         = shaderLocationsLinks.size()
+            .compileStepCount           = shaderCompileSteps.size()
         };
 
         renderer::Allocator renderAllocator;
