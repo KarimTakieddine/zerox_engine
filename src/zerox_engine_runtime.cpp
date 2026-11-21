@@ -360,33 +360,6 @@ namespace ZeroX
             );
         }
 
-        /*std::vector<renderer::Shader> shaders;
-        size_t shaderCount{ 0 };
-        for (const auto& shaderProgramConfig : config.getShaderPrograms())
-        {
-            const std::vector<renderer::Shader>& shaderConfigs = shaderProgramConfig.shaders;
-
-            shaders.insert(shaders.begin() + shaderCount, shaderConfigs.begin(), shaderConfigs.end());
-
-            shaderCount += shaderConfigs.size();
-        }*/
-
-        /*const std::vector<ShaderCompileConfig>& shaderCompileConfigs = config.getShaderCompileSteps();
-        std::vector<renderer::ShaderCompileStep> shaderCompileSteps;
-        shaderCompileSteps.reserve(shaderCompileConfigs.size());
-        for (const auto& compileConfig : shaderCompileConfigs)
-        {
-            const std::vector<size_t>& shaderIndices = compileConfig.shaderIndices;
-
-            shaderCompileSteps.emplace_back(
-                renderer::ShaderCompileStep{
-                    .shaderIndices  = shaderIndices.data(),
-                    .shaderCount    = shaderIndices.size(),
-                    .programIndex   = compileConfig.programIndex
-                }
-            );
-        }*/
-
         const std::vector<renderer::Texture>& textures = config.getTextures();
 
         std::vector<renderer::TextureArray> textureArrays;
