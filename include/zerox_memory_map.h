@@ -37,17 +37,17 @@ namespace ZeroX
 	public:
 		MemoryMap();
 
-		void mapMesh(uint64_t index, MeshType type);
-		void mapShaderProgram(uint64_t index, ShaderProgramType type);
-		void mapVertexArray(uint64_t index, VertexArrayType type);
+		void mapMesh(int index, MeshType type);
+		void mapShaderProgram(int index, ShaderProgramType type);
+		void mapVertexArray(int index, VertexArrayType type);
 
-		uint64_t getMeshIndex(MeshType type) const;
-		uint64_t getShaderProgramIndex(ShaderProgramType type) const;
-		uint64_t getVertexArrayIndex(VertexArrayType type) const;
+		int getMeshIndex(MeshType type) const;
+		int getShaderProgramIndex(ShaderProgramType type) const;
+		int getVertexArrayIndex(VertexArrayType type) const;
 
 	private:
-		std::vector<uint64_t> m_meshMappings;
-		std::vector<uint64_t> m_shaderProgramMappings;
-		std::vector<uint64_t> m_vertexArrayMappings;
+		std::vector<int> m_meshMappings;
+		std::vector<int> m_shaderProgramMappings;
+		std::vector<int> m_vertexArrayMappings;
 	};
 }

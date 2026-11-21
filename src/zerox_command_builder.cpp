@@ -101,13 +101,13 @@ namespace ZeroX
 			return ;
 		}
 
-		/*renderer::AllocateBatchCommand allocateBatchCommand = {
-			.shaderProgramIndex = map.getShaderProgramIndex(shaderProgramType),
-			.vertexArrayIndex	= map.getVertexArrayIndex(vertexArrayType),
-			.locationsIndex		= map.getLocationsDescriptorIndex(shaderProgramType),
+		renderer::AllocateBatchCommand allocateBatchCommand = {
+			.entityCount		= static_cast<size_t>(section.descriptorCount),
+			.drawMode			= drawMode,
 			.meshIndex			= map.getMeshIndex(meshType),
-			.entityCount		= section.descriptorCount,
-			.drawMode			= static_cast<uint64_t>(drawMode)
+			.shaderProgramIndex	= map.getShaderProgramIndex(shaderProgramType),
+			.vertexArrayIndex	= map.getVertexArrayIndex(vertexArrayType),
+			.elementCount		= 6 /* TODO(Karim) */
 		};
 
 		RenderCommand command{ .type = CommandType::ALLOCATE_RENDER_BATCH };
@@ -115,7 +115,7 @@ namespace ZeroX
 		std::memcpy(command.paramData.data(), &allocateBatchCommand, sizeof(renderer::AllocateBatchCommand));
 		m_buffer.commands.push_back(std::move(command));
 
-		section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;*/
+		section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
 	}
 
 	void CommandBufferBuilder::processBackgroundSection(const std::byte* gameMemory, EntitySection& section, uint64_t index)

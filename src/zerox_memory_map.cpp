@@ -10,32 +10,32 @@ namespace ZeroX
 		m_shaderProgramMappings	(static_cast<size_t>(ShaderProgramType::LAST) + 1, 0),
 		m_vertexArrayMappings	(static_cast<size_t>(VertexArrayType::LAST) + 1, 0) { }
 
-	void MemoryMap::mapMesh(uint64_t index, MeshType type)
+	void MemoryMap::mapMesh(int index, MeshType type)
 	{
 		m_meshMappings[static_cast<size_t>(type)] = index;
 	}
 
-	void MemoryMap::mapShaderProgram(uint64_t index, ShaderProgramType type)
+	void MemoryMap::mapShaderProgram(int index, ShaderProgramType type)
 	{
 		m_shaderProgramMappings[static_cast<size_t>(type)] = index;
 	}
 
-	void MemoryMap::mapVertexArray(uint64_t index, VertexArrayType type)
+	void MemoryMap::mapVertexArray(int index, VertexArrayType type)
 	{
 		m_vertexArrayMappings[static_cast<size_t>(type)] = index;
 	}
 
-	uint64_t MemoryMap::getMeshIndex(MeshType type) const
+	int MemoryMap::getMeshIndex(MeshType type) const
 	{
 		return m_meshMappings[static_cast<size_t>(type)];
 	}
 
-	uint64_t MemoryMap::getShaderProgramIndex(ShaderProgramType type) const
+	int MemoryMap::getShaderProgramIndex(ShaderProgramType type) const
 	{
 		return m_shaderProgramMappings[static_cast<size_t>(type)];
 	}
 
-	uint64_t MemoryMap::getVertexArrayIndex(VertexArrayType type) const
+	int MemoryMap::getVertexArrayIndex(VertexArrayType type) const
 	{
 		return m_vertexArrayMappings[static_cast<size_t>(type)];
 	}

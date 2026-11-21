@@ -485,16 +485,16 @@ namespace ZeroX
                         mutableGraphicsMemory = renderer::readGraphicsMemory(&renderAllocator);
                         break;
                     case CommandType::UPDATE_ENTITY_TRANSFORM:
-                        renderer::handleUpdateTransformCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::UpdateTransformCommand>(0).data());
+                        //renderer::handleUpdateTransformCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::UpdateTransformCommand>(0).data());
                         break;
                     case CommandType::UPDATE_ENTITY_MATERIAL:
-                        renderer::handleUpdateMaterialCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::UpdateMaterialCommand>(0).data());
+                        //renderer::handleUpdateMaterialCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::UpdateMaterialCommand>(0).data());
                         break;
                     case CommandType::SET_TEXTURE_LAYER:
-                        renderer::handleSetTextureLayerCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::SetTextureLayerCommand>(0).data());
+                        //renderer::handleSetTextureLayerCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::SetTextureLayerCommand>(0).data());
                         break;
                     case CommandType::SET_CLIENT_AREA:
-                        renderer::handleSetClientAreaCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::SetClientAreaCommand>(0).data());
+                        //renderer::handleSetClientAreaCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::SetClientAreaCommand>(0).data());
                         break;
                     default:
                         break;
