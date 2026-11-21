@@ -106,8 +106,7 @@ namespace ZeroX
 			.drawMode			= drawMode,
 			.meshIndex			= map.getMeshIndex(meshType),
 			.shaderProgramIndex	= map.getShaderProgramIndex(shaderProgramType),
-			.vertexArrayIndex	= map.getVertexArrayIndex(vertexArrayType),
-			.elementCount		= 6 /* TODO(Karim) */
+			.vertexArrayIndex	= map.getVertexArrayIndex(vertexArrayType)
 		};
 
 		RenderCommand command{ .type = CommandType::ALLOCATE_RENDER_BATCH };
