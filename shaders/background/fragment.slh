@@ -3,14 +3,14 @@
 in vec3 vertexColor;
 in vec2 vertexUV;
 
+uniform vec2 uvParams[2];
 uniform vec4 materialColor;
-uniform vec2 textureOffset;
 uniform uint layer;
 
 out vec4 oColor;
 
-uniform sampler2DArray textureArraySampler;
+uniform sampler2DArray tArraySampler;
 
 void main() {
-    oColor = texture(textureArraySampler, vec3(vertexUV + textureOffset, float(layer))) * materialColor;
+    oColor = texture(tArraySampler, vec3(vertexUV + uvParams[1], float(layer))) * materialColor;
 }

@@ -3,10 +3,10 @@
 in vec3 vertexColor;
 in vec2 vertexUV;
 
+uniform vec2 uvParams[2];
+
 uniform vec4 materialColor;
-uniform vec2 uvScale;
 uniform uvec2 tileSize;
-uniform vec2 textureOffset;
 
 uniform sampler2D textureSampler;
 
@@ -15,12 +15,12 @@ out vec4 oColor;
 void main() {
     vec2 localTiledUV = fract(vertexUV * vec2(tileSize));
 
-    vec2 scaledLocalUV = localTiledUV * uvScale;
+    vec2 scaledLocalUV = localTiledUV * uvParams[0];
 
-    vec2 finalUV = scaledLocalUV + textureOffset;
+    vec2 finalUV = scaledLocalUV + uvParams[1];
 
-    vec2 dx = dFdx(vertexUV * uvScale);
-    vec2 dy = dFdy(vertexUV * uvScale);
+    vec2 dx = dFdx(vertexUV * uvParams[0]);
+    vec2 dy = dFdy(vertexUV * uvParams[0]);
 
     oColor = textureGrad(textureSampler, finalUV, dx, dy) * materialColor;
 }

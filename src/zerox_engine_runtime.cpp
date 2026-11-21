@@ -426,8 +426,8 @@ namespace ZeroX
 
         renderer::Allocator renderAllocator;
         renderer::allocateGraphicsResources(&renderAllocator, &graphicsConfig);
+        renderer::initializeGraphicsResources(&renderAllocator, &graphicsConfig);
         renderer::MutableGraphicsMemory mutableGraphicsMemory = renderer::readGraphicsMemory(&renderAllocator);
-        renderer::initializeGraphicsResources(mutableGraphicsMemory, &graphicsConfig);
         renderer::initializeGraphicsState();
 
         const IWindow::Size size = window->getSize();
