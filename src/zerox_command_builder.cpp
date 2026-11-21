@@ -102,12 +102,11 @@ namespace ZeroX
 		}
 
 		renderer::AllocateBatchCommand allocateBatchCommand = {
-			.shaderProgramIndex = map.getShaderProgramIndex(shaderProgramType),
-			.vertexArrayIndex	= map.getVertexArrayIndex(vertexArrayType),
-			.locationsIndex		= map.getLocationsDescriptorIndex(shaderProgramType),
+			.entityCount		= static_cast<size_t>(section.descriptorCount),
+			.drawMode			= drawMode,
 			.meshIndex			= map.getMeshIndex(meshType),
-			.entityCount		= section.descriptorCount,
-			.drawMode			= static_cast<uint64_t>(drawMode)
+			.shaderProgramIndex	= map.getShaderProgramIndex(shaderProgramType),
+			.vertexArrayIndex	= map.getVertexArrayIndex(vertexArrayType)
 		};
 
 		RenderCommand command{ .type = CommandType::ALLOCATE_RENDER_BATCH };

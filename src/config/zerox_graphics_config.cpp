@@ -31,33 +31,6 @@ namespace ZeroX
 		return m_meshes;
 	}
 
-	void GraphicsConfig::setShaderProgramCount(size_t count)
-	{
-		m_shaderPrograms.reserve(count);
-	}
-
-	void GraphicsConfig::addShaderProgram(const ShaderProgramConfig& config)
-	{
-		m_shaderPrograms.emplace_back(config);
-	}
-
-	const ShaderProgramConfig& GraphicsConfig::getShaderProgram(size_t index) const
-	{
-		if (index >= m_shaderPrograms.size())
-		{
-			throw std::runtime_error(
-				std::string("Failed to get ShaderProgramConfig. Out of bounds: ")
-				+ std::to_string(index));
-		}
-		
-		return m_shaderPrograms.at(index);
-	}
-
-	const std::vector<ShaderProgramConfig>& GraphicsConfig::getShaderPrograms() const
-	{
-		return m_shaderPrograms;
-	}
-
 	void GraphicsConfig::setTextureCount(size_t count)
 	{
 		m_textures.reserve(count);
@@ -122,16 +95,6 @@ namespace ZeroX
 		return m_cameraUniformNames;
 	}
 
-	void GraphicsConfig::setShaderLocationsLinks(const std::vector<renderer::ShaderLocationsLink>& links)
-	{
-		m_locationsLinks = links;
-	}
-
-	const std::vector<renderer::ShaderLocationsLink>& GraphicsConfig::getShaderLocationsLinks() const
-	{
-		return m_locationsLinks;
-	}
-
 	const std::string& GraphicsConfig::getCameraUniformBuffer() const
 	{
 		return m_cameraUniformBuffer;
@@ -170,35 +133,5 @@ namespace ZeroX
 	size_t GraphicsConfig::getVertexArrayCount() const
 	{
 		return m_vertexArrayCount;
-	}
-
-	std::vector<ShaderCompileConfig> GraphicsConfig::getShaderCompileSteps() const
-	{
-		std::vector<ShaderCompileConfig> result;
-
-		result.reserve(m_shaderPrograms.size());
-
-		size_t flatShaderIndex{ 0 };
-		for (size_t i = 0; i < result.capacity(); ++i)
-		{
-			const auto& shaders			= m_shaderPrograms.at(i).shaders;
-			const size_t shaderCount	= shaders.size();
-
-			std::vector<size_t> shaderIndices;
-			shaderIndices.reserve(shaderCount);
-			for (size_t j = 0; j < shaderCount; ++j)
-			{
-				shaderIndices.emplace_back(flatShaderIndex + j);
-			}
-
-			result.emplace_back(ShaderCompileConfig{
-				.shaderIndices	= shaderIndices,
-				.programIndex	= i
-			});
-
-			flatShaderIndex += shaders.size();
-		}
-
-		return result;
 	}
 }

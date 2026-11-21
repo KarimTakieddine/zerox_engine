@@ -280,6 +280,67 @@ namespace ZeroX
 
         renderer::bindRenderBuffer(&renderBuffer);
 #endif
+        constexpr size_t shaderCount{ 10 };
+        std::vector<std::vector<char>> shaderFileContents;
+        shaderFileContents.reserve(shaderCount);
+
+        auto loadShaderFile = [&shaderFileContents](const char* path) -> void {
+            const size_t fileSize = platform::getFileSize(path);
+            if (fileSize == 0)
+            {
+                return;
+            }
+
+            std::vector<char> contents(fileSize + 1, '\0');
+            if (!platform::readFile(path, contents.data(), fileSize))
+            {
+                return;
+            }
+
+            shaderFileContents.push_back(std::move(contents));
+        };
+
+        // TODO(Karim): Could be async!
+
+        loadShaderFile("./shaders/unlit_color/vertex.slh");
+        loadShaderFile("./shaders/unlit_color/fragment.slh");
+        loadShaderFile("./shaders/background/vertex.slh");
+        loadShaderFile("./shaders/background/fragment.slh");
+        loadShaderFile("./shaders/sprite/vertex.slh");
+        loadShaderFile("./shaders/sprite/fragment.slh");
+        loadShaderFile("./shaders/tiled_sprite/vertex.slh");
+        loadShaderFile("./shaders/tiled_sprite/fragment.slh");
+        loadShaderFile("./shaders/collider/vertex.slh");
+        loadShaderFile("./shaders/collider/fragment.slh");
+
+        std::vector<renderer::ShaderLoadInfo> shaders;
+        shaders.reserve(10);
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::VERTEX, .content = shaderFileContents[0].data() });
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::FRAGMENT, .content = shaderFileContents[1].data() });
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::VERTEX, .content = shaderFileContents[2].data() });
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::FRAGMENT, .content = shaderFileContents[3].data() });
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::VERTEX, .content = shaderFileContents[4].data() });
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::FRAGMENT, .content = shaderFileContents[5].data() });
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::VERTEX, .content = shaderFileContents[6].data() });
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::FRAGMENT, .content = shaderFileContents[7].data() });
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::VERTEX, .content = shaderFileContents[8].data() });
+        shaders.push_back(renderer::ShaderLoadInfo{ .type = renderer::Shader::Type::FRAGMENT, .content = shaderFileContents[9].data() });
+
+        std::vector<std::vector<size_t>> compileIndices;
+        compileIndices.reserve(5);
+        compileIndices.push_back({ 0, 1 });
+        compileIndices.push_back({ 2, 3 });
+        compileIndices.push_back({ 4, 5 });
+        compileIndices.push_back({ 6, 7 });
+        compileIndices.push_back({ 8, 9 });
+
+        std::vector<renderer::ShaderCompileStep> shaderCompileSteps;
+        shaderCompileSteps.reserve(compileIndices.size());
+        shaderCompileSteps.push_back(renderer::ShaderCompileStep{ .shaderIndices = compileIndices[0].data(), .shaderCount = compileIndices[0].size() });
+        shaderCompileSteps.push_back(renderer::ShaderCompileStep{ .shaderIndices = compileIndices[1].data(), .shaderCount = compileIndices[1].size() });
+        shaderCompileSteps.push_back(renderer::ShaderCompileStep{ .shaderIndices = compileIndices[2].data(), .shaderCount = compileIndices[2].size() });
+        shaderCompileSteps.push_back(renderer::ShaderCompileStep{ .shaderIndices = compileIndices[3].data(), .shaderCount = compileIndices[3].size() });
+        shaderCompileSteps.push_back(renderer::ShaderCompileStep{ .shaderIndices = compileIndices[4].data(), .shaderCount = compileIndices[4].size() });
 
         const std::vector<MeshConfig>& meshConfigs = config.getMeshes();
 
@@ -299,35 +360,7 @@ namespace ZeroX
             );
         }
 
-        std::vector<renderer::Shader> shaders;
-        size_t shaderCount{ 0 };
-        for (const auto& shaderProgramConfig : config.getShaderPrograms())
-        {
-            const std::vector<renderer::Shader>& shaderConfigs = shaderProgramConfig.shaders;
-
-            shaders.insert(shaders.begin() + shaderCount, shaderConfigs.begin(), shaderConfigs.end());
-
-            shaderCount += shaderConfigs.size();
-        }
-
-        const std::vector<ShaderCompileConfig>& shaderCompileConfigs = config.getShaderCompileSteps();
-        std::vector<renderer::ShaderCompileStep> shaderCompileSteps;
-        shaderCompileSteps.reserve(shaderCompileConfigs.size());
-        for (const auto& compileConfig : shaderCompileConfigs)
-        {
-            const std::vector<size_t>& shaderIndices = compileConfig.shaderIndices;
-
-            shaderCompileSteps.emplace_back(
-                renderer::ShaderCompileStep{
-                    .shaderIndices  = shaderIndices.data(),
-                    .shaderCount    = shaderIndices.size(),
-                    .programIndex   = compileConfig.programIndex
-                }
-            );
-        }
-
-        const std::vector<renderer::ShaderLocationsLink>& shaderLocationsLinks  = config.getShaderLocationsLinks();
-        const std::vector<renderer::Texture>& textures                          = config.getTextures();
+        const std::vector<renderer::Texture>& textures = config.getTextures();
 
         std::vector<renderer::TextureArray> textureArrays;
         textureArrays.reserve(config.getTextureArrays().size());
@@ -349,7 +382,6 @@ namespace ZeroX
             .cameraUniformBuffer        = config.getCameraUniformBuffer().data(),
             .cameraUniformNames         = config.getCameraUniformNames().data(),
             .shaderCompileSteps         = shaderCompileSteps.data(),
-            .shaderLocationsLinks       = shaderLocationsLinks.data(),
             .textureArrays              = textureArrays.data(),
             .meshCount                  = meshes.size(),
             .bufferCount                = 5,
@@ -357,16 +389,14 @@ namespace ZeroX
             .textureCount               = textures.size(),
             .textureArrayCount          = textureArrays.size(),
             .shaderCount                = shaders.size(),
-            .shaderProgramCount         = config.getShaderPrograms().size(),
-            .locationsDescriptorCount   = shaderLocationsLinks.size(),
-            .compileStepCount           = shaderCompileSteps.size(),
-            .locationsLinkCount         = shaderLocationsLinks.size()
+            .shaderProgramCount         = shaderCompileSteps.size(),
+            .compileStepCount           = shaderCompileSteps.size()
         };
 
         renderer::Allocator renderAllocator;
         renderer::allocateGraphicsResources(&renderAllocator, &graphicsConfig);
+        renderer::initializeGraphicsResources(&renderAllocator, &graphicsConfig);
         renderer::MutableGraphicsMemory mutableGraphicsMemory = renderer::readGraphicsMemory(&renderAllocator);
-        renderer::initializeGraphicsResources(mutableGraphicsMemory, &graphicsConfig);
         renderer::initializeGraphicsState();
 
         const IWindow::Size size = window->getSize();

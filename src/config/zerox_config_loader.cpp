@@ -95,49 +95,6 @@ namespace ZeroX
 
 				config.setVertexArrayCount(2);
 
-				config.setShaderProgramCount(5);
-
-				ShaderProgramConfig unlitColorProgram = {
-					.shaders = {
-						{ "./shaders/unlit_color/vertex.slh", renderer::Shader::Type::VERTEX },
-						{ "./shaders/unlit_color/fragment.slh", renderer::Shader::Type::FRAGMENT }
-					}
-				};
-
-				ShaderProgramConfig backgroundProgram = {
-					.shaders = {
-						{ "./shaders/background/vertex.slh", renderer::Shader::Type::VERTEX },
-						{ "./shaders/background/fragment.slh", renderer::Shader::Type::FRAGMENT }
-					}
-				};
-
-				ShaderProgramConfig spriteProgram = {
-					.shaders = {
-						{ "./shaders/sprite/vertex.slh", renderer::Shader::Type::VERTEX },
-						{ "./shaders/sprite/fragment.slh", renderer::Shader::Type::FRAGMENT }
-					}
-				};
-
-				ShaderProgramConfig tiledSpriteProgram = {
-					.shaders = {
-						{ "./shaders/tiled_sprite/vertex.slh", renderer::Shader::Type::VERTEX },
-						{ "./shaders/tiled_sprite/fragment.slh", renderer::Shader::Type::FRAGMENT }
-					}
-				};
-
-				ShaderProgramConfig colliderProgram = {
-					.shaders = {
-						{ "./shaders/collider/vertex.slh", renderer::Shader::Type::VERTEX },
-						{ "./shaders/collider/fragment.slh", renderer::Shader::Type::FRAGMENT }
-					}
-				};
-
-				config.addShaderProgram(unlitColorProgram);
-				config.addShaderProgram(backgroundProgram);
-				config.addShaderProgram(spriteProgram);
-				config.addShaderProgram(tiledSpriteProgram);
-				config.addShaderProgram(colliderProgram);
-
 				config.setCameraEye({
 					.position	= glm::vec3{ 0.0f, 0.0f, 10.0f },
 					.target		= glm::vec3{ 0.0f, 0.0f, 0.0f },
@@ -152,21 +109,13 @@ namespace ZeroX
 				});
 
 				config.setCameraUniformNames({
-					"cameraProjection",
-					"cameraLocalToWorld",
-					"cameraLocalRotation",
-					"cameraView"
+					"c_projection",
+					"c_localToWorld",
+					"c_localRotation",
+					"c_view"
 				});
 
 				config.setCameraUniformBuffer("CameraMatrices");
-
-				config.setShaderLocationsLinks({
-					{ .locationsIndex = 0, .shaderProgramIndex = 0 },
-					{ .locationsIndex = 1, .shaderProgramIndex = 1 },
-					{ .locationsIndex = 2, .shaderProgramIndex = 2 },
-					{ .locationsIndex = 3, .shaderProgramIndex = 3 },
-					{ .locationsIndex = 4, .shaderProgramIndex = 4 }
-				});
 
 				config.setTextureCount(1);
 				renderer::Texture megaTexture = {
@@ -206,16 +155,9 @@ namespace ZeroX
 				memoryMap.mapVertexArray(1, VertexArrayType::COLLIDER);
 
 				memoryMap.mapShaderProgram(1, ShaderProgramType::BACKGROUND);
-				memoryMap.mapLocationsDescriptor(1, ShaderProgramType::BACKGROUND);
-
 				memoryMap.mapShaderProgram(2, ShaderProgramType::SPRITE);
-				memoryMap.mapLocationsDescriptor(2, ShaderProgramType::SPRITE);
-
 				memoryMap.mapShaderProgram(3, ShaderProgramType::TILED_SPRITE);
-				memoryMap.mapLocationsDescriptor(3, ShaderProgramType::TILED_SPRITE);
-
 				memoryMap.mapShaderProgram(4, ShaderProgramType::COLLIDER);
-				memoryMap.mapLocationsDescriptor(4, ShaderProgramType::COLLIDER);
 
 				return std::make_pair(config, memoryMap);
 			}
