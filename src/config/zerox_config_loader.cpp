@@ -152,10 +152,10 @@ namespace ZeroX
 				});
 
 				config.setCameraUniformNames({
-					"cameraProjection",
-					"cameraLocalToWorld",
-					"cameraLocalRotation",
-					"cameraView"
+					"c_projection",
+					"c_localToWorld",
+					"c_localRotation",
+					"c_view"
 				});
 
 				config.setCameraUniformBuffer("CameraMatrices");

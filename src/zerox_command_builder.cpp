@@ -101,7 +101,7 @@ namespace ZeroX
 			return ;
 		}
 
-		renderer::AllocateBatchCommand allocateBatchCommand = {
+		/*renderer::AllocateBatchCommand allocateBatchCommand = {
 			.shaderProgramIndex = map.getShaderProgramIndex(shaderProgramType),
 			.vertexArrayIndex	= map.getVertexArrayIndex(vertexArrayType),
 			.locationsIndex		= map.getLocationsDescriptorIndex(shaderProgramType),
@@ -115,7 +115,7 @@ namespace ZeroX
 		std::memcpy(command.paramData.data(), &allocateBatchCommand, sizeof(renderer::AllocateBatchCommand));
 		m_buffer.commands.push_back(std::move(command));
 
-		section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;
+		section.flags &= ~EntitySectionFlags::ALLOCATE_BATCH;*/
 	}
 
 	void CommandBufferBuilder::processBackgroundSection(const std::byte* gameMemory, EntitySection& section, uint64_t index)
