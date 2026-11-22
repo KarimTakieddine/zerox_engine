@@ -1,5 +1,7 @@
 #include <cassert>
 
+#include "config/zerox_audio_config.h"
+
 #include "zerox_engine_logger.h"
 #include "zerox_miniaudio_player.h"
 
@@ -10,7 +12,7 @@ namespace ZeroX
         ma_sound_uninit(&m_sound);
     }
 
-    bool MiniAudioSound::initialize(const char* file, SoundType type, ma_engine* engine, ma_sound_group* group)
+    bool MiniAudioSound::initialize(const char* file, ZeroXBridge::SoundType type, ma_engine* engine, ma_sound_group* group)
     {
         assert(engine);
         if (!engine)
@@ -23,10 +25,10 @@ namespace ZeroX
 
         switch (type)
         {
-        case SoundType::SOUND_EFFECT:
+        case ZeroXBridge::SoundType::SOUND_EFFECT:
             flags |= MA_SOUND_FLAG_DECODE;
             break;
-        case SoundType::BGM:
+        case ZeroXBridge::SoundType::BGM:
             flags |= MA_SOUND_FLAG_STREAM;
             break;
         default:
@@ -68,19 +70,19 @@ namespace ZeroX
             return false;
         }
 
-        for (const auto& soundConfig : config.sounds)
+        for (const auto& audioFile : config.audioFiles)
         {
             auto sound = std::make_unique<MiniAudioSound>();
 
             bool result = false;
 
-            switch (soundConfig.type)
+            switch (audioFile.sound.type)
             {
-            case SoundType::BGM:
-                result = sound->initialize(soundConfig.path.c_str(), soundConfig.type, &m_engine, &m_bgmGroup);
+            case ZeroXBridge::SoundType::BGM:
+                result = sound->initialize(audioFile.path.c_str(), audioFile.sound.type, &m_engine, &m_bgmGroup);
                 break;
-            case SoundType::SOUND_EFFECT:
-                result = sound->initialize(soundConfig.path.c_str(), soundConfig.type, &m_engine, &m_sfxGroup);
+            case ZeroXBridge::SoundType::SOUND_EFFECT:
+                result = sound->initialize(audioFile.path.c_str(), audioFile.sound.type, &m_engine, &m_sfxGroup);
                 break;
             default:
                 break;
@@ -91,7 +93,7 @@ namespace ZeroX
                 return result;
             }
 
-            m_sounds.emplace(std::make_pair(getFileBasename(soundConfig.path.c_str()), std::move(sound)));
+            m_sounds.emplace(std::make_pair(getFileBasename(audioFile.path.c_str()), std::move(sound)));
         }
 
         return true;

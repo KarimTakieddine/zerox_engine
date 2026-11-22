@@ -6,30 +6,30 @@
 
 namespace
 {
-	const std::unordered_map<std::string, ZeroX::SoundType> STRING_TO_SOUND_TYPE = {
-		{ "effect", ZeroX::SoundType::SOUND_EFFECT },
-		{ "music", ZeroX::SoundType::BGM }
+	const std::unordered_map<std::string, ZeroXBridge::SoundType> STRING_TO_SOUND_TYPE = {
+		{ "effect", ZeroXBridge::SoundType::SOUND_EFFECT },
+		{ "music", ZeroXBridge::SoundType::BGM }
 	};
 
-	ZeroX::SoundType parseSoundType(const std::string& type)
+	ZeroXBridge::SoundType parseSoundType(const std::string& type)
 	{
 		const auto it = STRING_TO_SOUND_TYPE.find(type);
 		if (it == STRING_TO_SOUND_TYPE.cend())
 		{
-			return ZeroX::SoundType::UNKNOWN;
+			return ZeroXBridge::SoundType::UNKNOWN;
 		}
 
 		return it->second;
 	}
 
-	ZeroX::AudioSound parseAudioSound(const pugi::xml_node node)
+	ZeroX::AudioFile parseAudioFile(const pugi::xml_node node)
 	{
-		ZeroX::AudioSound sound;
+		ZeroX::AudioFile audioFile;
 
-		if (pugi::xml_attribute pathAttribute = node.attribute("path")) { sound.path = pathAttribute.as_string(); }
-		if (pugi::xml_attribute typeAttribute = node.attribute("type")) { sound.type = parseSoundType(typeAttribute.as_string()); }
+		if (pugi::xml_attribute pathAttribute = node.attribute("path")) { audioFile.path		= pathAttribute.as_string(); }
+		if (pugi::xml_attribute typeAttribute = node.attribute("type")) { audioFile.sound.type	= parseSoundType(typeAttribute.as_string()); }
 
-		return sound;
+		return audioFile;
 	}
 }
 
@@ -67,7 +67,7 @@ namespace ZeroX
 
 		for (pugi::xml_node soundNode: node.children("Sound"))
 		{
-			config.sounds.push_back(::parseAudioSound(soundNode));
+			config.audioFiles.push_back(::parseAudioFile(soundNode));
 		}
 
 		return config;

@@ -14,7 +14,7 @@ namespace ZeroX
     public:
         ~MiniAudioSound();
 
-        bool initialize(const char* file, SoundType type, ma_engine* engine, ma_sound_group* group);
+        bool initialize(const char* file, ZeroXBridge::SoundType type, ma_engine* engine, ma_sound_group* group);
         bool start();
 
     private:

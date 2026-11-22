@@ -7,6 +7,7 @@
 #include <renderer.hpp>
 
 #include <zerox_engine_functions.h>
+#include <zerox_audio.h>
 
 #include "config/zerox_config_loader.h"
 #include "zerox_command_builder.h"
@@ -122,7 +123,7 @@ namespace ZeroX
             .readFile               = &platform::readFile,
             .allocateTexture        = [](EngineHandle handle, const char* file, const ZeroXBridge::Texture* texture) -> void {  },
             .allocateTextureArray   = [](EngineHandle handle, const char* const* files, const ZeroXBridge::Texture* texture, size_t count) -> void { },
-            .allocateAudio          = [](EngineHandle, const char* path) -> void { },
+            .allocateAudio          = [](EngineHandle, const char* path, const ZeroXBridge::AudioSound*) -> void { },
             .playAudio              = [](EngineHandle handle, size_t index) -> void { }
         };
 

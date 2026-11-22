@@ -13,10 +13,12 @@ namespace ZeroX
 		UPDATE_ENTITY_MATERIAL	= 3,
 		SET_TEXTURE_LAYER		= 4,
 		SET_CLIENT_AREA			= 5,
-		LAST					= SET_CLIENT_AREA
+		ALLOCATE_AUDIO			= 6,
+		PLAY_AUDIO				= 7,
+		LAST					= PLAY_AUDIO
 	};
 
-	struct RenderCommand
+	struct EngineCommand
 	{
 		std::vector<std::byte> paramData;
 		CommandType type{ CommandType::UNKNOWN };
@@ -24,6 +26,6 @@ namespace ZeroX
 
 	struct CommandBuffer
 	{
-		std::vector<RenderCommand> commands;
+		std::vector<EngineCommand> commands;
 	};
 }

@@ -5,23 +5,18 @@
 #include <string>
 #include <vector>
 
+#include <zerox_audio.h>
+
 namespace ZeroX
 {
-    enum class SoundType : uint8_t
+    struct AudioFile
     {
-        UNKNOWN         = 0,
-        SOUND_EFFECT    = 1,
-        BGM             = 2
-    };
-
-    struct AudioSound
-    {
+        ZeroXBridge::AudioSound sound;
         std::string path;
-        SoundType type{ SoundType::UNKNOWN };
     };
 
     struct AudioConfig
     {
-        std::vector<AudioSound> sounds;
+        std::vector<AudioFile> audioFiles;
     };
 }
