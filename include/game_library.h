@@ -27,11 +27,13 @@ namespace ZeroX
     struct GameLibraryFunctions
     {
     public:
+        typedef void(ZEROX_CDECL* SetEngineFunctionsProc)(const ZeroXBridge::EngineFunctions*);
         typedef ZeroXBridge::GameContext(ZEROX_CDECL* GameInitFunc)(GameAllocator*, const ZeroXBridge::EngineFunctions*);
         typedef bool(ZEROX_CDECL* GameLoadLevelFunc)(const ZeroXBridge::GameContext*, GameAllocator*, size_t);
         typedef bool(ZEROX_CDECL* GameUpdateFunc)(GameAllocator*, double);
         typedef RenderDescriptor(ZEROX_CDECL* RenderDescriptorFunc)(const GameAllocator*);
 
+        SetEngineFunctionsProc setEngineFunctions   { nullptr };
         GameInitFunc initGame                       { nullptr };
         GameLoadLevelFunc loadLevel                 { nullptr };
         GameUpdateFunc updateGame                   { nullptr };

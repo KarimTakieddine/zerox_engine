@@ -189,6 +189,8 @@ namespace ZeroX
                 else
                 {
                     LOG_INFO << "Successfully re-loaded game library. Change count is: " << changeCounter;
+
+                    gameLibrary->getFunctions().setEngineFunctions(&engineFunctions);
                 }
 
                 libraryChangeCounter = changeCounter;
