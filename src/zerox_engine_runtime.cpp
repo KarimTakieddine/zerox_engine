@@ -123,7 +123,7 @@ namespace ZeroX
             .readFile               = &platform::readFile,
             .allocateTexture        = [](EngineHandle handle, const char* file, const ZeroXBridge::Texture* texture) -> void {  },
             .allocateTextureArray   = [](EngineHandle handle, const char* const* files, const ZeroXBridge::Texture* texture, size_t count) -> void { },
-            .allocateAudio          = [](EngineHandle, const char* path, const ZeroXBridge::AudioSound*) -> void { },
+            .allocateAudio          = [](EngineHandle handle, const char* path, const ZeroXBridge::AudioSound* sound) -> void { reinterpret_cast<EngineRuntime*>(handle)->allocateAudioFile({ .path = path, .sound = *sound }); },
             .playAudio              = [](EngineHandle handle, size_t index) -> void { }
         };
 
@@ -258,6 +258,24 @@ namespace ZeroX
         {
             m_audioThread.join();
         }
+    }
+
+    void EngineRuntime::allocateAudioFile(const AudioFile& file)
+    {
+        EngineCommand allocateAudioCommand{ .type = CommandType::ALLOCATE_AUDIO };
+
+        std::vector<std::byte>& paramData = allocateAudioCommand.paramData;
+
+        const std::string& path = file.path;
+
+        paramData.resize(sizeof(ZeroXBridge::AudioSound) +path.size() + 1);
+
+        std::memcpy(paramData.data(), &file.sound, sizeof(ZeroXBridge::AudioSound));
+        std::memcpy(paramData.data() + sizeof(ZeroXBridge::AudioSound), path.data(), paramData.size() - 1);
+
+        while (!m_audioCommandPool->push({ { allocateAudioCommand } }));
+
+        m_audioCommandSemaphore.release();
     }
 
     void EngineRuntime::render(const GraphicsConfig& config, IWindow* window, CommandPool* commandPool)
@@ -566,6 +584,17 @@ namespace ZeroX
                 {
                     switch (command.type)
                     {
+                    case CommandType::ALLOCATE_AUDIO:
+                    {
+                        AudioFile file{
+                            .path   = std::string(reinterpret_cast<const char*>(command.paramData.data() + sizeof(ZeroXBridge::AudioSound))),
+                            .sound  = *reinterpret_cast<const ZeroXBridge::AudioSound*>(command.paramData.data())
+                        };
+
+                        player->loadSound(file);
+
+                        break;
+                    }
                     case CommandType::SHUTDOWN_AUDIO:
                         // TODO(Karim): Maybe unload sounds etc..?
                         break;

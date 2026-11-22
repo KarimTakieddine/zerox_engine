@@ -11,8 +11,8 @@ namespace ZeroX
 {
     struct AudioFile
     {
-        ZeroXBridge::AudioSound sound;
         std::string path;
+        ZeroXBridge::AudioSound sound;
     };
 
     struct AudioConfig

@@ -23,6 +23,7 @@ namespace ZeroX
         void processAudio(IAudioPlayer* player, CommandPool* commandPool);
         void stopRendering();
         void stopPlayingAudio();
+        void allocateAudioFile(const AudioFile& file);
 
         std::unique_ptr<EngineContext> m_context            { nullptr };
         std::unique_ptr<CommandPool> m_renderCommandPool    { nullptr };
