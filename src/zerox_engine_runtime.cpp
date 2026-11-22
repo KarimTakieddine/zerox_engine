@@ -69,7 +69,7 @@ namespace
 
 namespace ZeroX
 {
-    EngineRuntime::EngineRuntime() : m_context(std::make_unique<EngineContext>()) { }
+    EngineRuntime::EngineRuntime() : m_context(std::make_unique<EngineContext>()), m_commandPool(std::make_unique<CommandPool>()) {}
 
     EngineRuntime::~EngineRuntime()
     {
@@ -91,14 +91,13 @@ namespace ZeroX
         IWindow* window = windowFuture.get();
         LOG_INFO << "Successfully intialized Window instance. Starting rendering thread";
 
-        CommandPool renderCommandPool;
-        renderCommandPool.allocate(64);
-        
+        m_commandPool->allocate(64);
+
         auto graphicsPair = graphicsFuture.get();
 
         m_rendererThread = std::thread(
             &EngineRuntime::render,
-            this, graphicsPair.first, window, &renderCommandPool);
+            this, graphicsPair.first, window, m_commandPool.get());
 
         GameLibrary* gameLibrary = gameLibraryFuture.get();
 
@@ -206,7 +205,7 @@ namespace ZeroX
             CommandBufferBuilder bufferBuilder;
             bufferBuilder.processRenderDescriptor(reinterpret_cast<const std::byte*>(gameAllocator.peek()), graphicsMemoryMap, renderDescriptor);
 
-            while (!renderCommandPool.push(bufferBuilder.getBuffer()))
+            while (!m_commandPool->push(bufferBuilder.getBuffer()))
             {
 
             }
@@ -444,7 +443,7 @@ namespace ZeroX
             glBindFramebuffer(GL_FRAMEBUFFER, renderBuffer.frameBufferHandle);
 #endif
             CommandBuffer commandBuffer;
-            if (m_runRenderer.load(std::memory_order_acquire) && commandPool->pop(commandBuffer))
+            if (commandPool->pop(commandBuffer))
             {
                 for (const auto& command : commandBuffer.commands)
                 {

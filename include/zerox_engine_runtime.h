@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config/zerox_graphics_config.h"
+#include "zerox_command_pool.h"
 #include "zerox_engine_context.h"
 
 namespace ZeroX
@@ -19,7 +20,8 @@ namespace ZeroX
         void render(const GraphicsConfig& config, IWindow* window, CommandPool* commandPool);
         void stopRendering();
 
-        std::unique_ptr<EngineContext> m_context{ nullptr };
+        std::unique_ptr<EngineContext> m_context    { nullptr };
+        std::unique_ptr<CommandPool> m_commandPool  { nullptr };
 
         std::thread m_rendererThread;
         std::atomic<uint64_t> m_renderFrameIndex{ 0 };
