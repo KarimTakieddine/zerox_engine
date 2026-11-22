@@ -13,6 +13,8 @@ namespace ZeroX
         virtual ~IAudioPlayer() = default;
 
         virtual bool initialize(const AudioConfig& config) = 0;
-        virtual bool playSound(const std::string& name) = 0;
+        virtual bool loadSound(const AudioFile& file) = 0;
+        virtual void unloadSound(size_t index) = 0;
+        virtual bool playSound(size_t index) = 0;
     };
 }

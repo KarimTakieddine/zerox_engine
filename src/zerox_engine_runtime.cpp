@@ -250,7 +250,9 @@ namespace ZeroX
 
     void EngineRuntime::stopPlayingAudio()
     {
+        while (!m_audioCommandPool->push({ { EngineCommand{ .type = CommandType::SHUTDOWN_AUDIO } } }));
         m_runAudio.store(false, std::memory_order_release);
+        m_audioCommandSemaphore.release();
 
         if (m_audioThread.joinable())
         {
@@ -553,6 +555,23 @@ namespace ZeroX
 
     void EngineRuntime::processAudio(IAudioPlayer* player, CommandPool* commandPool)
     {
+        while (m_runAudio.load(std::memory_order_acquire))
+        {
+            m_audioCommandSemaphore.acquire();
 
+            CommandBuffer commandBuffer;
+            if (commandPool->pop(commandBuffer))
+            {
+                for (const auto& command : commandBuffer.commands)
+                {
+                    switch (command.type)
+                    {
+                    case CommandType::SHUTDOWN_AUDIO:
+                        // TODO(Karim): Maybe unload sounds etc..?
+                        break;
+                    }
+                }
+            }
+        }
     }
 }

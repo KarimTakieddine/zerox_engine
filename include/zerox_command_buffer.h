@@ -15,7 +15,8 @@ namespace ZeroX
 		SET_CLIENT_AREA			= 5,
 		ALLOCATE_AUDIO			= 6,
 		PLAY_AUDIO				= 7,
-		LAST					= PLAY_AUDIO
+		SHUTDOWN_AUDIO			= 8,
+		LAST					= SHUTDOWN_AUDIO
 	};
 
 	struct EngineCommand

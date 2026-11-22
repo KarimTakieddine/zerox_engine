@@ -70,44 +70,62 @@ namespace ZeroX
             return false;
         }
 
+        bool allLoaded{ true };
         for (const auto& audioFile : config.audioFiles)
         {
-            auto sound = std::make_unique<MiniAudioSound>();
-
-            bool result = false;
-
-            switch (audioFile.sound.type)
+            if (!loadSound(audioFile))
             {
-            case ZeroXBridge::SoundType::BGM:
-                result = sound->initialize(audioFile.path.c_str(), audioFile.sound.type, &m_engine, &m_bgmGroup);
-                break;
-            case ZeroXBridge::SoundType::SOUND_EFFECT:
-                result = sound->initialize(audioFile.path.c_str(), audioFile.sound.type, &m_engine, &m_sfxGroup);
-                break;
-            default:
-                break;
+                allLoaded = false;
             }
-            
-            if (!result)
-            {
-                return result;
-            }
-
-            m_sounds.emplace(std::make_pair(getFileBasename(audioFile.path.c_str()), std::move(sound)));
         }
 
-        return true;
+        return allLoaded;
     }
-    
-    bool MiniAudioPlayer::playSound(const std::string& name)
+
+    bool MiniAudioPlayer::loadSound(const AudioFile& file)
     {
-        auto it = m_sounds.find(name);
-        if (it == m_sounds.end())
+        auto miniAudioSound = std::make_unique<MiniAudioSound>();
+
+        bool result = false;
+
+        const ZeroXBridge::AudioSound& sound = file.sound;
+
+        switch (sound.type)
         {
-            LOG_ERROR << "Failed to play audio sound. Could not find: " << name;
+        case ZeroXBridge::SoundType::BGM:
+            result = miniAudioSound->initialize(file.path.c_str(), sound.type, &m_engine, &m_bgmGroup);
+            break;
+        case ZeroXBridge::SoundType::SOUND_EFFECT:
+            result = miniAudioSound->initialize(file.path.c_str(), sound.type, &m_engine, &m_sfxGroup);
+            break;
+        default:
+            break;
+        }
+
+        m_sounds.push_back(std::move(miniAudioSound));
+            
+        return result;
+    }
+
+    void MiniAudioPlayer::unloadSound(size_t index)
+    {
+        if (index >= m_sounds.size())
+        {
+            LOG_ERROR << "Failed to unload audio sound. Out-of-bounds index: " << std::to_string(index);
+            return;
+        }
+
+        m_sounds.erase(m_sounds.begin() + index);
+    }
+
+    bool MiniAudioPlayer::playSound(size_t index)
+    {
+        if (index >= m_sounds.size())
+        {
+            LOG_ERROR << "Failed to play audio sound. Out-of-bounds index: " << std::to_string(index);
             return false;
         }
 
-        return it->second->start();
+        return m_sounds.at(index)->start();
     }
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <memory>
-#include <unordered_map>
+#include <vector>
 
 #include <miniaudio.h>
 
@@ -27,10 +27,12 @@ namespace ZeroX
         ~MiniAudioPlayer() override;
 
         bool initialize(const AudioConfig& config) override;
-        bool playSound(const std::string& file) override;
+        bool loadSound(const AudioFile& file) override;
+        void unloadSound(size_t index) override;
+        bool playSound(size_t index) override;
 
     private:
-        std::unordered_map<std::string, std::unique_ptr<MiniAudioSound>> m_sounds;
+        std::vector<std::unique_ptr<MiniAudioSound>> m_sounds;
         ma_engine m_engine;
         ma_sound_group m_sfxGroup;
         ma_sound_group m_bgmGroup;

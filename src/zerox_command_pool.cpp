@@ -43,7 +43,7 @@ namespace ZeroX
 		return true;
 	}
 
-	bool CommandPool::pop(CommandBuffer& action)
+	bool CommandPool::pop(CommandBuffer& buffer)
 	{
 		const size_t current_head = m_head.load(std::memory_order_relaxed);
 
@@ -57,7 +57,7 @@ namespace ZeroX
 			}
 		}
 
-		action = std::move(m_data[current_head]);
+		buffer = std::move(m_data[current_head]);
 
 		m_head.store((current_head + 1) & m_capacityMask, std::memory_order_release);
 

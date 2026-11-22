@@ -1,5 +1,7 @@
 #pragma once
 
+#include <semaphore>
+
 #include "config/zerox_graphics_config.h"
 #include "zerox_command_pool.h"
 #include "zerox_engine_context.h"
@@ -28,10 +30,11 @@ namespace ZeroX
 
         std::thread m_rendererThread;
         std::thread m_audioThread;
-        std::atomic<uint64_t> m_renderFrameIndex{ 0 };
-        std::atomic<double> m_frameDeltaTime    { 0.0 };
-        std::atomic<bool> m_runRenderer         { true };
-        std::atomic<bool> m_runAudio            { true };
+        std::counting_semaphore<> m_audioCommandSemaphore   { 0 };
+        std::atomic<uint64_t> m_renderFrameIndex            { 0 };
+        std::atomic<double> m_frameDeltaTime                { 0.0 };
+        std::atomic<bool> m_runRenderer                     { true };
+        std::atomic<bool> m_runAudio                        { true };
 
 #ifdef _WIN32
         std::atomic<UINT> m_resizeWidth     { 0 };
