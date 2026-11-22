@@ -4,8 +4,9 @@
 #include <glad/gl.h>
 
 #include <render_buffer.h>
-#include <render_command_types.h>
 #include <renderer.hpp>
+
+#include <zerox_engine_functions.h>
 
 #include "config/zerox_config_loader.h"
 #include "zerox_command_builder.h"
@@ -104,7 +105,19 @@ namespace ZeroX
         BumpAllocator<16> gameAllocator;
         gameAllocator.allocate(16384);
 
-        ZeroXBridge::GameContext gameContext = gameLibrary->getFunctions().initGame(&gameAllocator);
+        using ZeroXBridge::EngineHandle;
+
+        ZeroXBridge::EngineFunctions engineFunctions{
+            .handle                 = this,
+            .getFileSize            = &platform::getFileSize,
+            .readFile               = &platform::readFile,
+            .allocateTexture        = [](EngineHandle handle, const char* file, const ZeroXBridge::Texture* texture) -> void {  },
+            .allocateTextureArray   = [](EngineHandle handle, const char* const* files, const ZeroXBridge::Texture* texture, size_t count) -> void { },
+            .allocateAudio          = [](EngineHandle, const char* path) -> void { },
+            .playAudio              = [](EngineHandle handle, size_t index) -> void { }
+        };
+
+        ZeroXBridge::GameContext gameContext = gameLibrary->getFunctions().initGame(&gameAllocator, &engineFunctions);
         if (!gameContext.input)
         {
             LOG_WARN << "Failed to initialize game library";

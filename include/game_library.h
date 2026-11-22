@@ -14,6 +14,8 @@
     #define ZEROX_CDECL
 #endif
 
+namespace ZeroXBridge { struct EngineFunctions; }
+
 namespace ZeroX
 {
     using ZeroXBridge::RenderDescriptor;
@@ -25,7 +27,7 @@ namespace ZeroX
     struct GameLibraryFunctions
     {
     public:
-        typedef ZeroXBridge::GameContext(ZEROX_CDECL* GameInitFunc)(GameAllocator*);
+        typedef ZeroXBridge::GameContext(ZEROX_CDECL* GameInitFunc)(GameAllocator*, const ZeroXBridge::EngineFunctions*);
         typedef bool(ZEROX_CDECL* GameLoadLevelFunc)(const ZeroXBridge::GameContext*, GameAllocator*, size_t);
         typedef bool(ZEROX_CDECL* GameUpdateFunc)(GameAllocator*, double);
         typedef RenderDescriptor(ZEROX_CDECL* RenderDescriptorFunc)(const GameAllocator*);
