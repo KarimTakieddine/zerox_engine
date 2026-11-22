@@ -70,10 +70,11 @@ namespace
 
 namespace ZeroX
 {
-    EngineRuntime::EngineRuntime() : m_context(std::make_unique<EngineContext>()), m_commandPool(std::make_unique<CommandPool>()) {}
+    EngineRuntime::EngineRuntime() : m_context(std::make_unique<EngineContext>()), m_renderCommandPool(std::make_unique<CommandPool>()), m_audioCommandPool(std::make_unique<CommandPool>()) { }
 
     EngineRuntime::~EngineRuntime()
     {
+        stopPlayingAudio();
         stopRendering();
     }
 
@@ -90,15 +91,23 @@ namespace ZeroX
         m_context->load(configPath, std::move(loadPromise));
 
         IWindow* window = windowFuture.get();
-        LOG_INFO << "Successfully intialized Window instance. Starting rendering thread";
+        LOG_INFO << "Successfully intialized Window instance. Starting rendering thread...";
 
-        m_commandPool->allocate(64);
+        m_renderCommandPool->allocate(64);
 
         auto graphicsPair = graphicsFuture.get();
 
         m_rendererThread = std::thread(
             &EngineRuntime::render,
-            this, graphicsPair.first, window, m_commandPool.get());
+            this, graphicsPair.first, window, m_renderCommandPool.get());
+
+        IAudioPlayer* audioPlayer = audioPlayerFuture.get();
+        LOG_INFO << "Successfully intialized audio player. Starting audio thread...";
+
+        m_audioCommandPool->allocate(16);
+        m_audioThread = std::thread(
+            &EngineRuntime::processAudio,
+            this, audioPlayer, m_audioCommandPool.get());
 
         GameLibrary* gameLibrary = gameLibraryFuture.get();
 
@@ -132,12 +141,6 @@ namespace ZeroX
             LOG_WARN << "Failed to load level at index 0";
         }
 
-        GameLibraryWatcher* gameLibraryWatcher = gameLibraryWatcherFuture.get();
-        uint64_t libraryChangeCounter{ 0 };
-
-        IAudioPlayer* audioPlayer = audioPlayerFuture.get();
-        LOG_INFO << "Successfully intialized audio player";
-
         window->setResizeCallback([&](int width, int height) -> void {
             if (width <= 0 || height <= 0) { return; }
 
@@ -163,6 +166,9 @@ namespace ZeroX
         uint64_t frameIndex{ 0 };
 
         const MemoryMap& graphicsMemoryMap = graphicsPair.second;
+
+        GameLibraryWatcher* gameLibraryWatcher = gameLibraryWatcherFuture.get();
+        uint64_t libraryChangeCounter{ 0 };
 
         while (!window->shouldClose())
         {
@@ -218,7 +224,7 @@ namespace ZeroX
             CommandBufferBuilder bufferBuilder;
             bufferBuilder.processRenderDescriptor(reinterpret_cast<const std::byte*>(gameAllocator.peek()), graphicsMemoryMap, renderDescriptor);
 
-            while (!m_commandPool->push(bufferBuilder.getBuffer()))
+            while (!m_renderCommandPool->push(bufferBuilder.getBuffer()))
             {
 
             }
@@ -236,6 +242,16 @@ namespace ZeroX
         if (m_rendererThread.joinable())
         {
             m_rendererThread.join();
+        }
+    }
+
+    void EngineRuntime::stopPlayingAudio()
+    {
+        m_runAudio.store(false, std::memory_order_release);
+
+        if (m_audioThread.joinable())
+        {
+            m_audioThread.join();
         }
     }
 
@@ -530,5 +546,10 @@ namespace ZeroX
 
         ReleaseDC(nativeWindowHandle, hdc);
 #endif
+    }
+
+    void EngineRuntime::processAudio(IAudioPlayer* player, CommandPool* commandPool)
+    {
+
     }
 }

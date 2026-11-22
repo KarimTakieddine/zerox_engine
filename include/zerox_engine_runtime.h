@@ -18,15 +18,20 @@ namespace ZeroX
 
     private:
         void render(const GraphicsConfig& config, IWindow* window, CommandPool* commandPool);
+        void processAudio(IAudioPlayer* player, CommandPool* commandPool);
         void stopRendering();
+        void stopPlayingAudio();
 
-        std::unique_ptr<EngineContext> m_context    { nullptr };
-        std::unique_ptr<CommandPool> m_commandPool  { nullptr };
+        std::unique_ptr<EngineContext> m_context            { nullptr };
+        std::unique_ptr<CommandPool> m_renderCommandPool    { nullptr };
+        std::unique_ptr<CommandPool> m_audioCommandPool     { nullptr };
 
         std::thread m_rendererThread;
+        std::thread m_audioThread;
         std::atomic<uint64_t> m_renderFrameIndex{ 0 };
         std::atomic<double> m_frameDeltaTime    { 0.0 };
         std::atomic<bool> m_runRenderer         { true };
+        std::atomic<bool> m_runAudio            { true };
 
 #ifdef _WIN32
         std::atomic<UINT> m_resizeWidth     { 0 };
