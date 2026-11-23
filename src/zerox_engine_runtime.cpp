@@ -76,6 +76,16 @@ namespace
 
         return gameLibrary->load(destinationPath.string().c_str());
     }
+
+    inline constexpr size_t getChannelCount(platform::Image::Format format)
+    {
+        switch (format)
+        {
+            case platform::Image::Format::RGB:  return 3;
+            case platform::Image::Format::RGBA: return 4;
+            default:                            return 0;
+        }
+    }
 }
 
 namespace ZeroX
@@ -341,20 +351,9 @@ namespace ZeroX
                 continue;
             }
 
-            size_t channelCount{ 0 };
-            switch (image->getFormat())
-            {
-            case platform::Image::Format::RGB:
-                channelCount = 3;
-                break;
-            case platform::Image::Format::RGBA:
-                channelCount = 4;
-                break;
-            default:
-                break;
-            }
+            const size_t channelCount = ::getChannelCount(image->getFormat());
 
-            if (channelCount == 0)
+            if (channelCount == 0 || channelCount != renderer::getChannelCount(textures[i].format))
             {
                 continue;
             }
@@ -396,27 +395,16 @@ namespace ZeroX
         std::memcpy(paramData.data(), &index, sizeof(size_t));
         std::memcpy(paramData.data() + 2 * sizeof(size_t), texture, sizeof(ZeroXBridge::Texture));
 
-        size_t imageChannelCount{ 0 };
-        switch (texture->format)
-        {
-        case ZeroXBridge::TextureFormat::RGB:
-            imageChannelCount = 3;
-            break;
-        case ZeroXBridge::TextureFormat::RGBA:
-            imageChannelCount = 4;
-            break;
-        default:
-            break;
-        }
+        const size_t textureChannelCount = renderer::getChannelCount(texture->format);
 
-        if (imageChannelCount == 0)
+        if (textureChannelCount == 0)
         {
             return;
         }
 
         const uint32_t imageWidth   = texture->width;
         const uint32_t imageHeight  = texture->height;
-        const size_t imageByteSize  = static_cast<size_t>(imageWidth) * imageHeight * imageChannelCount;
+        const size_t imageByteSize  = static_cast<size_t>(imageWidth) * imageHeight * textureChannelCount;
 
         size_t loadedCount{ 0 };
         for (size_t i = 0; i < count; ++i)
@@ -433,20 +421,9 @@ namespace ZeroX
                 continue;
             }
 
-            size_t channelCount{ 0 };
-            switch (image->getFormat())
-            {
-            case platform::Image::Format::RGB:
-                channelCount = 3;
-                break;
-            case platform::Image::Format::RGBA:
-                channelCount = 4;
-                break;
-            default:
-                break;
-            }
+            const size_t channelCount = ::getChannelCount(image->getFormat());
 
-            if (image->getWidth() != imageWidth || image->getHeight() != imageHeight || channelCount != imageChannelCount)
+            if (image->getWidth() != imageWidth || image->getHeight() != imageHeight || channelCount != textureChannelCount)
             {
                 continue;
             }
@@ -707,25 +684,7 @@ namespace ZeroX
                         {
                             const ZeroXBridge::Texture* texture = textures.data() + i;
 
-                            // TODO(Karim): Create channel count from format function in bridge layer!
-
-                            size_t channelCount{ 0 };
-                            switch (texture->format)
-                            {
-                            case ZeroXBridge::TextureFormat::RGB:
-                                channelCount = 3;
-                                break;
-                            case ZeroXBridge::TextureFormat::RGBA:
-                                channelCount = 4;
-                                break;
-                            default:
-                                break;
-                            }
-
-                            if (channelCount == 0)
-                            {
-                                continue;
-                            }
+                            const size_t channelCount = renderer::getChannelCount(texture->format);
 
                             const size_t imageByteSize = static_cast<size_t>(texture->width) * texture->height * channelCount;
 
@@ -749,19 +708,7 @@ namespace ZeroX
                         const auto count    = *paramsView.read_object<size_t>(sizeof(size_t)).data();
                         const auto* texture = paramsView.read_object<ZeroXBridge::Texture>(2 * sizeof(size_t)).data();
 
-                        size_t channelCount{ 0 };
-                        switch (texture->format)
-                        {
-                        case ZeroXBridge::TextureFormat::RGB:
-                            channelCount = 3;
-                            break;
-                        case ZeroXBridge::TextureFormat::RGBA:
-                            channelCount = 4;
-                            break;
-                        default:
-                            break;
-                        }
-
+                        const size_t channelCount = renderer::getChannelCount(texture->format);
                         if (channelCount == 0)
                         {
                             continue;
