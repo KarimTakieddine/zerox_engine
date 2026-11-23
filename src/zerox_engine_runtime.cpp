@@ -325,8 +325,7 @@ namespace ZeroX
 
         paramData.resize(paramsSize);
 
-        std::memcpy(paramData.data(), &count, sizeof(uint64_t));
-        std::memcpy(paramData.data() + 2 * sizeof(uint64_t), textures, count * sizeof(ZeroXBridge::Texture));
+        size_t loadedCount{ 0 };
 
         for (size_t i = 0; i < count; ++i)
         {
@@ -335,16 +334,45 @@ namespace ZeroX
             std::filesystem::path absoluteTexturePath(m_context->getGameLibrary()->getWorkingDirectory());
             absoluteTexturePath /= relativeTexturePath;
 
-            const std::string path = absoluteTexturePath.string();
+            auto image = platform::loadImage(absoluteTexturePath.string().c_str(), false);
 
-            const size_t length = path.size();
-            const size_t offset = paramsSize;
+            if (!image || image->getWidth() == 0 || image->getHeight() == 0)
+            {
+                continue;
+            }
 
-            paramsSize += ( length + 1 );
-            paramData.resize(paramsSize);
+            size_t channelCount{ 0 };
+            switch (image->getFormat())
+            {
+            case platform::Image::Format::RGB:
+                channelCount = 3;
+                break;
+            case platform::Image::Format::RGBA:
+                channelCount = 4;
+                break;
+            default:
+                break;
+            }
 
-            std::memcpy(paramData.data() + offset, path.data(), length);
+            if (channelCount == 0)
+            {
+                continue;
+            }
+
+            const size_t offset         = paramsSize;
+            const size_t imageByteSize  = static_cast<size_t>(image->getWidth()) * image->getHeight() * channelCount;
+
+            paramData.resize(paramsSize + imageByteSize);
+
+            std::memcpy(paramData.data() + offset, image->getData(), imageByteSize);
+
+            paramsSize += imageByteSize;
+
+            ++loadedCount;
         }
+
+        std::memcpy(paramData.data(), &loadedCount, sizeof(uint64_t));
+        std::memcpy(paramData.data() + 2 * sizeof(uint64_t), textures, loadedCount * sizeof(ZeroXBridge::Texture));
 
         while (!m_renderCommandPool->push({ { uploadTexturesCommand } }));
     }
@@ -366,26 +394,73 @@ namespace ZeroX
         paramData.resize(paramsSize);
 
         std::memcpy(paramData.data(), &index, sizeof(size_t));
-        std::memcpy(paramData.data() + sizeof(size_t), &count, sizeof(size_t));
         std::memcpy(paramData.data() + 2 * sizeof(size_t), texture, sizeof(ZeroXBridge::Texture));
 
+        size_t imageChannelCount{ 0 };
+        switch (texture->format)
+        {
+        case ZeroXBridge::TextureFormat::RGB:
+            imageChannelCount = 3;
+            break;
+        case ZeroXBridge::TextureFormat::RGBA:
+            imageChannelCount = 4;
+            break;
+        default:
+            break;
+        }
+
+        if (imageChannelCount == 0)
+        {
+            return;
+        }
+
+        const uint32_t imageWidth   = texture->width;
+        const uint32_t imageHeight  = texture->height;
+        const size_t imageByteSize  = static_cast<size_t>(imageWidth) * imageHeight * imageChannelCount;
+
+        size_t loadedCount{ 0 };
         for (size_t i = 0; i < count; ++i)
         {
             const std::string relativeTexturePath(paths[i]);
-            
+
             std::filesystem::path absoluteTexturePath(m_context->getGameLibrary()->getWorkingDirectory());
             absoluteTexturePath /= relativeTexturePath;
 
-            const std::string path = absoluteTexturePath.string();
+            auto image = platform::loadImage(absoluteTexturePath.string().c_str(), false);
 
-            const size_t length = path.size();
-            const size_t offset = paramsSize;
+            if (!image)
+            {
+                continue;
+            }
 
-            paramsSize += ( length + 1 );
-            paramData.resize(paramsSize);
+            size_t channelCount{ 0 };
+            switch (image->getFormat())
+            {
+            case platform::Image::Format::RGB:
+                channelCount = 3;
+                break;
+            case platform::Image::Format::RGBA:
+                channelCount = 4;
+                break;
+            default:
+                break;
+            }
 
-            std::memcpy(paramData.data() + offset, path.data(), length);
+            if (image->getWidth() != imageWidth || image->getHeight() != imageHeight || channelCount != imageChannelCount)
+            {
+                continue;
+            }
+
+            paramData.resize(paramsSize + imageByteSize);
+
+            std::memcpy(paramData.data() + paramsSize, image->getData(), imageByteSize);
+
+            paramsSize += imageByteSize;
+
+            ++loadedCount;
         }
+
+        std::memcpy(paramData.data() + sizeof(size_t), &loadedCount, sizeof(size_t));
 
         while (!m_renderCommandPool->push({ { uploadTextureArrayCommand } }));
     }
@@ -624,26 +699,45 @@ namespace ZeroX
 
                         commandCursor.step_array<ZeroXBridge::Texture>(textureCount);
 
-                        uint64_t texturePathOffset = commandCursor.getOffset();
+                        std::vector<unsigned char> pixelData;
+                        size_t pixelBufferSize{ 0 };
+                        uint64_t pixelBufferOffset{ commandCursor.getOffset() };
 
-                        std::vector<const char*> texturePaths;
-                        texturePaths.reserve(textureCount);
                         for (size_t i = 0; i < textureCount; ++i)
                         {
-                            const char* texturePathBytes = reinterpret_cast<const char*>(command.paramData.data()) + texturePathOffset;
+                            const ZeroXBridge::Texture* texture = textures.data() + i;
 
-                            std::string texturePath(texturePathBytes);
+                            // TODO(Karim): Create channel count from format function in bridge layer!
 
-                            texturePaths.push_back(texturePathBytes);
-                            
-                            texturePathOffset += texturePath.size() + 1;
+                            size_t channelCount{ 0 };
+                            switch (texture->format)
+                            {
+                            case ZeroXBridge::TextureFormat::RGB:
+                                channelCount = 3;
+                                break;
+                            case ZeroXBridge::TextureFormat::RGBA:
+                                channelCount = 4;
+                                break;
+                            default:
+                                break;
+                            }
+
+                            if (channelCount == 0)
+                            {
+                                continue;
+                            }
+
+                            const size_t imageByteSize = static_cast<size_t>(texture->width) * texture->height * channelCount;
+
+                            pixelData.resize(pixelBufferSize + imageByteSize);
+
+                            std::memcpy(pixelData.data() + pixelBufferSize, command.paramData.data() + pixelBufferOffset, imageByteSize);
+
+                            pixelBufferSize += imageByteSize;
+                            pixelBufferOffset += imageByteSize;
                         }
 
-                        renderer::uploadTextures(
-                            renderer::freezeGraphicsMemory(mutableGraphicsMemory),
-                            textureCount,
-                            texturePaths.data(),
-                            textures.data());
+                        renderer::uploadTextures(renderer::freezeGraphicsMemory(mutableGraphicsMemory), textureCount, pixelData.data(), textures.data());
 
                         glGetIntegerv(GL_TEXTURE_BINDING_2D, &megaTextureId);
 
@@ -655,23 +749,44 @@ namespace ZeroX
                         const auto count    = *paramsView.read_object<size_t>(sizeof(size_t)).data();
                         const auto* texture = paramsView.read_object<ZeroXBridge::Texture>(2 * sizeof(size_t)).data();
 
-                        uint64_t texturePathOffset = 2 * sizeof(size_t) + sizeof(ZeroXBridge::Texture);
-
-                        std::vector<const char*> texturePaths;
-                        texturePaths.reserve(count);
-                        for (size_t i = 0; i < count; ++i)
+                        size_t channelCount{ 0 };
+                        switch (texture->format)
                         {
-                            const char* texturePathBytes = reinterpret_cast<const char*>(command.paramData.data()) + texturePathOffset;
-
-                            std::string texturePath(texturePathBytes);
-
-                            texturePaths.push_back(texturePathBytes);
-
-                            texturePathOffset += texturePath.size() + 1;
+                        case ZeroXBridge::TextureFormat::RGB:
+                            channelCount = 3;
+                            break;
+                        case ZeroXBridge::TextureFormat::RGBA:
+                            channelCount = 4;
+                            break;
+                        default:
+                            break;
                         }
 
-                        const auto memory = renderer::freezeGraphicsMemory(mutableGraphicsMemory);
-                        renderer::uploadTextureArray(memory, *texture, index, count, texturePaths.data());
+                        if (channelCount == 0)
+                        {
+                            continue;
+                        }
+
+                        const size_t imageByteSize  = static_cast<size_t>(texture->width) * texture->height * channelCount;
+                        size_t commandPixelOffset   = 2 * sizeof(size_t) + sizeof(ZeroXBridge::Texture);
+                        size_t pixelDataOffset      = 0;
+
+                        std::vector<unsigned char> pixelData(imageByteSize * count);
+                        for (size_t i = 0; i < count; ++i)
+                        {
+                            std::memcpy(pixelData.data() + pixelDataOffset, command.paramData.data() + commandPixelOffset, imageByteSize);
+
+                            pixelDataOffset += imageByteSize;
+                            commandPixelOffset += imageByteSize;
+                        }
+
+                        renderer::uploadTextureArray(
+                            renderer::freezeGraphicsMemory(mutableGraphicsMemory),
+                            texture,
+                            index,
+                            count,
+                            pixelData.data()
+                        );
 
                         break;
                     }
