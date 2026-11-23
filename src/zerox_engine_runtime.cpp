@@ -121,8 +121,8 @@ namespace ZeroX
             .handle                 = this,
             .getFileSize            = &platform::getFileSize,
             .readFile               = &platform::readFile,
-            .allocateTexture        = [](EngineHandle handle, const char* file, const ZeroXBridge::Texture* texture) -> void {  },
-            .allocateTextureArray   = [](EngineHandle handle, const char* const* files, const ZeroXBridge::Texture* texture, size_t count) -> void { },
+            .uploadTextures         = [](EngineHandle handle, const char* const* paths, const ZeroXBridge::Texture* textures, size_t count) -> void {  },
+            .uploadTextureArray     = [](EngineHandle handle, const char* const* files, const ZeroXBridge::Texture* texture, size_t count) -> void { },
             .allocateAudio          = [](EngineHandle handle, const char* path, const ZeroXBridge::AudioSound* sound) -> void { reinterpret_cast<EngineRuntime*>(handle)->allocateAudioFile({ .path = path, .sound = *sound }); },
             .playAudio              = [](EngineHandle handle, size_t index) -> void { }
         };
