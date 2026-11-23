@@ -531,8 +531,7 @@ namespace ZeroX
         auto startTimePoint = std::chrono::steady_clock::now();
 
         GLint megaTextureId{ 0 };
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, &megaTextureId);
-
+        
         while (m_runRenderer.load(std::memory_order_acquire))
         {
 #ifdef _WIN32
@@ -623,6 +622,8 @@ namespace ZeroX
                             textureCount,
                             texturePaths.data(),
                             textures.data());
+
+                        glGetIntegerv(GL_TEXTURE_BINDING_2D, &megaTextureId);
 
                         break;
                     }
