@@ -25,6 +25,7 @@ namespace ZeroX
         void stopPlayingAudio();
 
         void allocateAudioFile(const AudioFile& file);
+        void playAudio(size_t index);
         void uploadTextures(const char* const* paths, const ZeroXBridge::Texture* textures, size_t count);
         void uploadTextureArray(const char* const* paths, size_t count, const ZeroXBridge::Texture* texture, size_t index);
 

@@ -133,7 +133,7 @@ namespace ZeroX
             .uploadTextures         = [](EngineHandle handle, const char* const* paths, const ZeroXBridge::Texture* textures, size_t count) -> void { reinterpret_cast<EngineRuntime*>(handle)->uploadTextures(paths, textures, count); },
             .uploadTextureArray     = [](EngineHandle handle, const char* const* files, size_t count, const ZeroXBridge::Texture* texture, size_t index) -> void { reinterpret_cast<EngineRuntime*>(handle)->uploadTextureArray(files, count, texture, index); },
             .allocateAudio          = [](EngineHandle handle, const char* path, const ZeroXBridge::AudioSound* sound) -> void { reinterpret_cast<EngineRuntime*>(handle)->allocateAudioFile({ .path = path, .sound = *sound }); },
-            .playAudio              = [](EngineHandle handle, size_t index) -> void { }
+            .playAudio              = [](EngineHandle handle, size_t index) -> void { reinterpret_cast<EngineRuntime*>(handle)->playAudio(index); }
         };
 
         ZeroXBridge::GameContext gameContext = gameLibrary->getFunctions().initGame(&gameAllocator, &engineFunctions);
@@ -159,6 +159,9 @@ namespace ZeroX
             m_resizeHeight.store(static_cast<UINT>(height), std::memory_order_release);
             m_resizeRequested.store(true, std::memory_order_release);
 #else
+            /*
+            * TODO(Karim): Fix this for linux!
+            *
             renderer::Frame frame;
             renderer::Command command{ .type = renderer::CommandType::SET_CLIENT_AREA };
             renderer::SetClientAreaCommand clientAreaCommand = {
@@ -167,7 +170,7 @@ namespace ZeroX
             };
             std::memcpy(command.data, &clientAreaCommand, sizeof(renderer::SetClientAreaCommand));
             frame.renderCommands.push_back(command);
-            while (!renderFrameBuffer.push(frame)) { }
+            while (!renderFrameBuffer.push(frame)) { }*/
 #endif
         });
 
@@ -288,6 +291,20 @@ namespace ZeroX
         std::memcpy(paramData.data() + sizeof(ZeroXBridge::AudioSound), path.data(), path.size());
 
         while (!m_audioCommandPool->push({ { allocateAudioCommand } }));
+
+        m_audioCommandSemaphore.release();
+    }
+
+    void EngineRuntime::playAudio(size_t index)
+    {
+        EngineCommand playAudioCommand{ .type = CommandType::PLAY_AUDIO };
+
+        std::vector<std::byte>& paramData = playAudioCommand.paramData;
+
+        paramData.resize(sizeof(size_t));
+        std::memcpy(paramData.data(), &index, sizeof(size_t));
+
+        while (!m_audioCommandPool->push({ { playAudioCommand } }));
 
         m_audioCommandSemaphore.release();
     }
@@ -733,6 +750,9 @@ namespace ZeroX
 
                         break;
                     }
+                    case CommandType::PLAY_AUDIO:
+                        player->playSound(*reinterpret_cast<const size_t*>(command.paramData.data()));
+                        break;
                     case CommandType::SHUTDOWN_AUDIO:
                         // TODO(Karim): Maybe unload sounds etc..?
                         break;
