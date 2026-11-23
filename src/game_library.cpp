@@ -19,6 +19,7 @@ namespace ZeroX
         auto a = platform::loadLibraryFunction(m_handle, "initializeRenderDescriptor");
 
         m_functions = {
+            .setEngineFunctions     = (GameLibraryFunctions::SetEngineFunctionsProc)platform::loadLibraryFunction(m_handle, "setEngineFunctions"),
             .initGame               = (GameLibraryFunctions::GameInitFunc)platform::loadLibraryFunction(m_handle, "initializeGame"),
             .loadLevel              = (GameLibraryFunctions::GameLoadLevelFunc)platform::loadLibraryFunction(m_handle, "loadLevel"),
             .updateGame             = (GameLibraryFunctions::GameUpdateFunc)platform::loadLibraryFunction(m_handle, "updateGame"),
@@ -41,6 +42,7 @@ namespace ZeroX
     bool GameLibrary::isValid() const
     {
         return
+            m_functions.setEngineFunctions &&
             m_functions.initGame &&
             m_functions.loadLevel &&
             m_functions.updateGame &&
@@ -50,5 +52,19 @@ namespace ZeroX
     const GameLibraryFunctions& GameLibrary::getFunctions() const
     {
         return m_functions;
+    }
+
+    std::string GameLibrary::getWorkingDirectory() const
+    {
+        std::lock_guard<std::mutex> lock(m_workingDirectoryMutex);
+
+        return m_workingDirectory;
+    }
+
+    void GameLibrary::setWorkingDirectory(const std::string& workingDirectory)
+    {
+        std::lock_guard<std::mutex> lock(m_workingDirectoryMutex);
+
+        m_workingDirectory = workingDirectory;
     }
 }

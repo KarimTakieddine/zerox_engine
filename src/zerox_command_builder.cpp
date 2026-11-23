@@ -109,7 +109,7 @@ namespace ZeroX
 			.vertexArrayIndex	= map.getVertexArrayIndex(vertexArrayType)
 		};
 
-		RenderCommand command{ .type = CommandType::ALLOCATE_RENDER_BATCH };
+		EngineCommand command{ .type = CommandType::ALLOCATE_RENDER_BATCH };
 		command.paramData.resize(sizeof(renderer::AllocateBatchCommand));
 		std::memcpy(command.paramData.data(), &allocateBatchCommand, sizeof(renderer::AllocateBatchCommand));
 		m_buffer.commands.push_back(std::move(command));

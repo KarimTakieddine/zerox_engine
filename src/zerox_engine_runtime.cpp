@@ -3,9 +3,12 @@
 
 #include <glad/gl.h>
 
+#include <opengl_allocator.h>
 #include <render_buffer.h>
-#include <render_command_types.h>
 #include <renderer.hpp>
+
+#include <zerox_engine_functions.h>
+#include <zerox_audio.h>
 
 #include "config/zerox_config_loader.h"
 #include "zerox_command_builder.h"
@@ -63,16 +66,35 @@ namespace
             return false;
         }
 
+        if (!gameLibrary->load(destinationPath.string().c_str()))
+        {
+            LOG_ERROR << "Failed to reload game library: Failed to load library functions from " << destinationPath.string().c_str();
+            return false;
+        }
+
+        gameLibrary->setWorkingDirectory(parentDirectory);
+
         return gameLibrary->load(destinationPath.string().c_str());
+    }
+
+    inline constexpr size_t getChannelCount(platform::Image::Format format)
+    {
+        switch (format)
+        {
+            case platform::Image::Format::RGB:  return 3;
+            case platform::Image::Format::RGBA: return 4;
+            default:                            return 0;
+        }
     }
 }
 
 namespace ZeroX
 {
-    EngineRuntime::EngineRuntime() : m_context(std::make_unique<EngineContext>()), m_commandPool(std::make_unique<CommandPool>()) {}
+    EngineRuntime::EngineRuntime() : m_context(std::make_unique<EngineContext>()), m_renderCommandPool(std::make_unique<CommandPool>()), m_audioCommandPool(std::make_unique<CommandPool>()) { }
 
     EngineRuntime::~EngineRuntime()
     {
+        stopPlayingAudio();
         stopRendering();
     }
 
@@ -89,22 +111,42 @@ namespace ZeroX
         m_context->load(configPath, std::move(loadPromise));
 
         IWindow* window = windowFuture.get();
-        LOG_INFO << "Successfully intialized Window instance. Starting rendering thread";
+        LOG_INFO << "Successfully intialized Window instance. Starting rendering thread...";
 
-        m_commandPool->allocate(64);
+        m_renderCommandPool->allocate(64);
 
         auto graphicsPair = graphicsFuture.get();
 
         m_rendererThread = std::thread(
             &EngineRuntime::render,
-            this, graphicsPair.first, window, m_commandPool.get());
+            this, graphicsPair.first, window, m_renderCommandPool.get());
+
+        IAudioPlayer* audioPlayer = audioPlayerFuture.get();
+        LOG_INFO << "Successfully intialized audio player. Starting audio thread...";
+
+        m_audioCommandPool->allocate(16);
+        m_audioThread = std::thread(
+            &EngineRuntime::processAudio,
+            this, audioPlayer, m_audioCommandPool.get());
 
         GameLibrary* gameLibrary = gameLibraryFuture.get();
 
         BumpAllocator<16> gameAllocator;
         gameAllocator.allocate(16384);
 
-        ZeroXBridge::GameContext gameContext = gameLibrary->getFunctions().initGame(&gameAllocator);
+        using ZeroXBridge::EngineHandle;
+
+        ZeroXBridge::EngineFunctions engineFunctions{
+            .handle                 = this,
+            .getFileSize            = &platform::getFileSize,
+            .readFile               = &platform::readFile,
+            .uploadTextures         = [](EngineHandle handle, const char* const* paths, const ZeroXBridge::Texture* textures, size_t count) -> void { reinterpret_cast<EngineRuntime*>(handle)->uploadTextures(paths, textures, count); },
+            .uploadTextureArray     = [](EngineHandle handle, const char* const* files, size_t count, const ZeroXBridge::Texture* texture, size_t index) -> void { reinterpret_cast<EngineRuntime*>(handle)->uploadTextureArray(files, count, texture, index); },
+            .allocateAudio          = [](EngineHandle handle, const char* path, const ZeroXBridge::AudioSound* sound) -> void { reinterpret_cast<EngineRuntime*>(handle)->allocateAudioFile({ .path = path, .sound = *sound }); },
+            .playAudio              = [](EngineHandle handle, size_t index) -> void { reinterpret_cast<EngineRuntime*>(handle)->playAudio(index); }
+        };
+
+        ZeroXBridge::GameContext gameContext = gameLibrary->getFunctions().initGame(&gameAllocator, &engineFunctions);
         if (!gameContext.input)
         {
             LOG_WARN << "Failed to initialize game library";
@@ -119,12 +161,6 @@ namespace ZeroX
             LOG_WARN << "Failed to load level at index 0";
         }
 
-        GameLibraryWatcher* gameLibraryWatcher = gameLibraryWatcherFuture.get();
-        uint64_t libraryChangeCounter{ 0 };
-
-        IAudioPlayer* audioPlayer = audioPlayerFuture.get();
-        LOG_INFO << "Successfully intialized audio player";
-
         window->setResizeCallback([&](int width, int height) -> void {
             if (width <= 0 || height <= 0) { return; }
 
@@ -133,6 +169,9 @@ namespace ZeroX
             m_resizeHeight.store(static_cast<UINT>(height), std::memory_order_release);
             m_resizeRequested.store(true, std::memory_order_release);
 #else
+            /*
+            * TODO(Karim): Fix this for linux!
+            *
             renderer::Frame frame;
             renderer::Command command{ .type = renderer::CommandType::SET_CLIENT_AREA };
             renderer::SetClientAreaCommand clientAreaCommand = {
@@ -141,7 +180,7 @@ namespace ZeroX
             };
             std::memcpy(command.data, &clientAreaCommand, sizeof(renderer::SetClientAreaCommand));
             frame.renderCommands.push_back(command);
-            while (!renderFrameBuffer.push(frame)) { }
+            while (!renderFrameBuffer.push(frame)) { }*/
 #endif
         });
 
@@ -150,6 +189,9 @@ namespace ZeroX
         uint64_t frameIndex{ 0 };
 
         const MemoryMap& graphicsMemoryMap = graphicsPair.second;
+
+        GameLibraryWatcher* gameLibraryWatcher = gameLibraryWatcherFuture.get();
+        uint64_t libraryChangeCounter{ 0 };
 
         while (!window->shouldClose())
         {
@@ -169,6 +211,8 @@ namespace ZeroX
                 else
                 {
                     LOG_INFO << "Successfully re-loaded game library. Change count is: " << changeCounter;
+
+                    gameLibrary->getFunctions().setEngineFunctions(&engineFunctions);
                 }
 
                 libraryChangeCounter = changeCounter;
@@ -205,7 +249,7 @@ namespace ZeroX
             CommandBufferBuilder bufferBuilder;
             bufferBuilder.processRenderDescriptor(reinterpret_cast<const std::byte*>(gameAllocator.peek()), graphicsMemoryMap, renderDescriptor);
 
-            while (!m_commandPool->push(bufferBuilder.getBuffer()))
+            while (!m_renderCommandPool->push(bufferBuilder.getBuffer()))
             {
 
             }
@@ -224,6 +268,178 @@ namespace ZeroX
         {
             m_rendererThread.join();
         }
+    }
+
+    void EngineRuntime::stopPlayingAudio()
+    {
+        while (!m_audioCommandPool->push({ { EngineCommand{ .type = CommandType::SHUTDOWN_AUDIO } } }));
+        m_runAudio.store(false, std::memory_order_release);
+        m_audioCommandSemaphore.release();
+
+        if (m_audioThread.joinable())
+        {
+            m_audioThread.join();
+        }
+    }
+
+    void EngineRuntime::allocateAudioFile(const AudioFile& file)
+    {
+        EngineCommand allocateAudioCommand{ .type = CommandType::ALLOCATE_AUDIO };
+
+        std::vector<std::byte>& paramData = allocateAudioCommand.paramData;
+
+        const std::string& relativePath = file.path;
+
+        std::filesystem::path absolutePath(m_context->getGameLibrary()->getWorkingDirectory());
+        absolutePath /= relativePath;
+
+        const std::string path = absolutePath.string();
+
+        paramData.resize(sizeof(ZeroXBridge::AudioSound) + path.size() + 1);
+
+        std::memcpy(paramData.data(), &file.sound, sizeof(ZeroXBridge::AudioSound));
+        std::memcpy(paramData.data() + sizeof(ZeroXBridge::AudioSound), path.data(), path.size());
+
+        while (!m_audioCommandPool->push({ { allocateAudioCommand } }));
+
+        m_audioCommandSemaphore.release();
+    }
+
+    void EngineRuntime::playAudio(size_t index)
+    {
+        EngineCommand playAudioCommand{ .type = CommandType::PLAY_AUDIO };
+
+        std::vector<std::byte>& paramData = playAudioCommand.paramData;
+
+        paramData.resize(sizeof(size_t));
+        std::memcpy(paramData.data(), &index, sizeof(size_t));
+
+        while (!m_audioCommandPool->push({ { playAudioCommand } }));
+
+        m_audioCommandSemaphore.release();
+    }
+
+    void EngineRuntime::uploadTextures(const char* const* paths, const ZeroXBridge::Texture* textures, size_t count)
+    {
+        assert(paths && textures);
+        if (!paths || !textures)
+        {
+            return;
+        }
+
+        EngineCommand uploadTexturesCommand{ .type = CommandType::UPLOAD_TEXTURES };
+
+        std::vector<std::byte>& paramData = uploadTexturesCommand.paramData;
+
+        size_t paramsSize{ sizeof(uint64_t) * 2 + count * sizeof(ZeroXBridge::Texture) };
+
+        paramData.resize(paramsSize);
+
+        size_t loadedCount{ 0 };
+
+        for (size_t i = 0; i < count; ++i)
+        {
+            const std::string relativeTexturePath(paths[i]);
+
+            std::filesystem::path absoluteTexturePath(m_context->getGameLibrary()->getWorkingDirectory());
+            absoluteTexturePath /= relativeTexturePath;
+
+            auto image = platform::loadImage(absoluteTexturePath.string().c_str(), false);
+
+            if (!image || image->getWidth() == 0 || image->getHeight() == 0)
+            {
+                continue;
+            }
+
+            const size_t channelCount = ::getChannelCount(image->getFormat());
+
+            if (channelCount == 0 || channelCount != renderer::getChannelCount(textures[i].format))
+            {
+                continue;
+            }
+
+            const size_t offset         = paramsSize;
+            const size_t imageByteSize  = static_cast<size_t>(image->getWidth()) * image->getHeight() * channelCount;
+
+            paramData.resize(paramsSize + imageByteSize);
+
+            std::memcpy(paramData.data() + offset, image->getData(), imageByteSize);
+
+            paramsSize += imageByteSize;
+
+            ++loadedCount;
+        }
+
+        std::memcpy(paramData.data(), &loadedCount, sizeof(uint64_t));
+        std::memcpy(paramData.data() + 2 * sizeof(uint64_t), textures, loadedCount * sizeof(ZeroXBridge::Texture));
+
+        while (!m_renderCommandPool->push({ { uploadTexturesCommand } }));
+    }
+
+    void EngineRuntime::uploadTextureArray(const char* const* paths, size_t count, const ZeroXBridge::Texture* texture, size_t index)
+    {
+        assert(paths && texture);
+        if (!paths || !texture)
+        {
+            return;
+        }
+
+        EngineCommand uploadTextureArrayCommand{ .type = CommandType::UPLOAD_TEXTURE_ARRAY };
+
+        std::vector<std::byte>& paramData = uploadTextureArrayCommand.paramData;
+
+        size_t paramsSize{ 2 * sizeof(size_t) + sizeof(ZeroXBridge::Texture) };
+
+        paramData.resize(paramsSize);
+
+        std::memcpy(paramData.data(), &index, sizeof(size_t));
+        std::memcpy(paramData.data() + 2 * sizeof(size_t), texture, sizeof(ZeroXBridge::Texture));
+
+        const size_t textureChannelCount = renderer::getChannelCount(texture->format);
+
+        if (textureChannelCount == 0)
+        {
+            return;
+        }
+
+        const uint32_t imageWidth   = texture->width;
+        const uint32_t imageHeight  = texture->height;
+        const size_t imageByteSize  = static_cast<size_t>(imageWidth) * imageHeight * textureChannelCount;
+
+        size_t loadedCount{ 0 };
+        for (size_t i = 0; i < count; ++i)
+        {
+            const std::string relativeTexturePath(paths[i]);
+
+            std::filesystem::path absoluteTexturePath(m_context->getGameLibrary()->getWorkingDirectory());
+            absoluteTexturePath /= relativeTexturePath;
+
+            auto image = platform::loadImage(absoluteTexturePath.string().c_str(), false);
+
+            if (!image)
+            {
+                continue;
+            }
+
+            const size_t channelCount = ::getChannelCount(image->getFormat());
+
+            if (image->getWidth() != imageWidth || image->getHeight() != imageHeight || channelCount != textureChannelCount)
+            {
+                continue;
+            }
+
+            paramData.resize(paramsSize + imageByteSize);
+
+            std::memcpy(paramData.data() + paramsSize, image->getData(), imageByteSize);
+
+            paramsSize += imageByteSize;
+
+            ++loadedCount;
+        }
+
+        std::memcpy(paramData.data() + sizeof(size_t), &loadedCount, sizeof(size_t));
+
+        while (!m_renderCommandPool->push({ { uploadTextureArrayCommand } }));
     }
 
     void EngineRuntime::render(const GraphicsConfig& config, IWindow* window, CommandPool* commandPool)
@@ -343,6 +559,7 @@ namespace ZeroX
 
         const std::vector<MeshConfig>& meshConfigs = config.getMeshes();
 
+        // TODO(Karim): This shouldn't be necessary:
         std::vector<renderer::Mesh> meshes;
         meshes.reserve(meshConfigs.size());
         for (const auto& meshConfig : meshConfigs)
@@ -359,34 +576,17 @@ namespace ZeroX
             );
         }
 
-        const std::vector<renderer::Texture>& textures = config.getTextures();
-
-        std::vector<renderer::TextureArray> textureArrays;
-        textureArrays.reserve(config.getTextureArrays().size());
-        for (const auto& textureArray : config.getTextureArrays())
-        {
-            textureArrays.emplace_back(renderer::TextureArray{
-                .data           = textureArray.data,
-                .paths          = textureArray.textureFiles.data(),
-                .textureCount   = textureArray.textureFiles.size()
-            });
-        }
-
         renderer::GraphicsConfig graphicsConfig = {
             .meshes                     = meshes.data(),
-            .textures                   = textures.data(),
             .shaders                    = shaders.data(),
             .cameraEye                  = &config.getCameraEye(),
             .cameraFrustum              = &config.getCameraFrustum(),
             .cameraUniformBuffer        = config.getCameraUniformBuffer().data(),
             .cameraUniformNames         = config.getCameraUniformNames().data(),
             .shaderCompileSteps         = shaderCompileSteps.data(),
-            .textureArrays              = textureArrays.data(),
             .meshCount                  = meshes.size(),
             .bufferCount                = 5,
             .vertexArrayCount           = config.getVertexArrayCount(),
-            .textureCount               = textures.size(),
-            .textureArrayCount          = textureArrays.size(),
             .shaderCount                = shaders.size(),
             .shaderProgramCount         = shaderCompileSteps.size(),
             .compileStepCount           = shaderCompileSteps.size()
@@ -405,8 +605,7 @@ namespace ZeroX
         auto startTimePoint = std::chrono::steady_clock::now();
 
         GLint megaTextureId{ 0 };
-        glGetIntegerv(GL_TEXTURE_BINDING_2D, &megaTextureId);
-
+        
         while (m_runRenderer.load(std::memory_order_acquire))
         {
 #ifdef _WIN32
@@ -468,6 +667,76 @@ namespace ZeroX
                     case CommandType::SET_CLIENT_AREA:
                         renderer::handleSetClientAreaCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::SetClientAreaCommand>(0).data());
                         break;
+                    case CommandType::UPLOAD_TEXTURES:
+                    {
+                        MemoryCursor<16> commandCursor;
+
+                        auto textures = paramsView.read_contiguous_array<ZeroXBridge::Texture>(0);
+                        const size_t textureCount = textures.size();
+
+                        commandCursor.step_array<ZeroXBridge::Texture>(textureCount);
+
+                        std::vector<unsigned char> pixelData;
+                        size_t pixelBufferSize{ 0 };
+                        uint64_t pixelBufferOffset{ commandCursor.getOffset() };
+
+                        for (size_t i = 0; i < textureCount; ++i)
+                        {
+                            const ZeroXBridge::Texture* texture = textures.data() + i;
+
+                            const size_t channelCount = renderer::getChannelCount(texture->format);
+
+                            const size_t imageByteSize = static_cast<size_t>(texture->width) * texture->height * channelCount;
+
+                            pixelData.resize(pixelBufferSize + imageByteSize);
+
+                            std::memcpy(pixelData.data() + pixelBufferSize, command.paramData.data() + pixelBufferOffset, imageByteSize);
+
+                            pixelBufferSize += imageByteSize;
+                            pixelBufferOffset += imageByteSize;
+                        }
+
+                        renderer::uploadTextures(renderer::freezeGraphicsMemory(mutableGraphicsMemory), textureCount, pixelData.data(), textures.data());
+
+                        glGetIntegerv(GL_TEXTURE_BINDING_2D, &megaTextureId);
+
+                        break;
+                    }
+                    case CommandType::UPLOAD_TEXTURE_ARRAY:
+                    {
+                        const auto index    = *paramsView.read_object<size_t>(0).data();
+                        const auto count    = *paramsView.read_object<size_t>(sizeof(size_t)).data();
+                        const auto* texture = paramsView.read_object<ZeroXBridge::Texture>(2 * sizeof(size_t)).data();
+
+                        const size_t channelCount = renderer::getChannelCount(texture->format);
+                        if (channelCount == 0)
+                        {
+                            continue;
+                        }
+
+                        const size_t imageByteSize  = static_cast<size_t>(texture->width) * texture->height * channelCount;
+                        size_t commandPixelOffset   = 2 * sizeof(size_t) + sizeof(ZeroXBridge::Texture);
+                        size_t pixelDataOffset      = 0;
+
+                        std::vector<unsigned char> pixelData(imageByteSize * count);
+                        for (size_t i = 0; i < count; ++i)
+                        {
+                            std::memcpy(pixelData.data() + pixelDataOffset, command.paramData.data() + commandPixelOffset, imageByteSize);
+
+                            pixelDataOffset += imageByteSize;
+                            commandPixelOffset += imageByteSize;
+                        }
+
+                        renderer::uploadTextureArray(
+                            renderer::freezeGraphicsMemory(mutableGraphicsMemory),
+                            texture,
+                            index,
+                            count,
+                            pixelData.data()
+                        );
+
+                        break;
+                    }
                     default:
                         break;
                     }
@@ -517,5 +786,41 @@ namespace ZeroX
 
         ReleaseDC(nativeWindowHandle, hdc);
 #endif
+    }
+
+    void EngineRuntime::processAudio(IAudioPlayer* player, CommandPool* commandPool)
+    {
+        while (m_runAudio.load(std::memory_order_acquire))
+        {
+            m_audioCommandSemaphore.acquire();
+
+            CommandBuffer commandBuffer;
+            if (commandPool->pop(commandBuffer))
+            {
+                for (const auto& command : commandBuffer.commands)
+                {
+                    switch (command.type)
+                    {
+                    case CommandType::ALLOCATE_AUDIO:
+                    {
+                        AudioFile file{
+                            .path   = std::string(reinterpret_cast<const char*>(command.paramData.data() + sizeof(ZeroXBridge::AudioSound))),
+                            .sound  = *reinterpret_cast<const ZeroXBridge::AudioSound*>(command.paramData.data())
+                        };
+
+                        player->loadSound(file);
+
+                        break;
+                    }
+                    case CommandType::PLAY_AUDIO:
+                        player->playSound(*reinterpret_cast<const size_t*>(command.paramData.data()));
+                        break;
+                    case CommandType::SHUTDOWN_AUDIO:
+                        // TODO(Karim): Maybe unload sounds etc..?
+                        break;
+                    }
+                }
+            }
+        }
     }
 }

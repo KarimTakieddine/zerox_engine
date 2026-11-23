@@ -31,60 +31,6 @@ namespace ZeroX
 		return m_meshes;
 	}
 
-	void GraphicsConfig::setTextureCount(size_t count)
-	{
-		m_textures.reserve(count);
-	}
-
-	void GraphicsConfig::addTexture(const renderer::Texture& texture)
-	{
-		m_textures.emplace_back(texture);
-	}
-
-	const renderer::Texture& GraphicsConfig::getTexture(size_t index) const
-	{
-		if (index >= m_textures.size())
-		{
-			throw std::runtime_error(
-				std::string("Failed to get Texture. Out of bounds: ")
-				+ std::to_string(index));
-		}
-
-		return m_textures.at(index);
-	}
-
-	const std::vector<renderer::Texture>& GraphicsConfig::getTextures() const
-	{
-		return m_textures;
-	}
-
-	void GraphicsConfig::setTextureArrayCount(size_t count)
-	{
-		m_textureArrays.reserve(count);
-	}
-
-	void GraphicsConfig::addTextureArray(const TextureArrayConfig& config)
-	{
-		m_textureArrays.emplace_back(config);
-	}
-
-	const TextureArrayConfig& GraphicsConfig::getTextureArray(size_t index) const
-	{
-		if (index >= m_textureArrays.size())
-		{
-			throw std::runtime_error(
-				std::string("Failed to get TextureArray. Out of bounds: ")
-				+ std::to_string(index));
-		}
-
-		return m_textureArrays.at(index);
-	}
-
-	const std::vector<TextureArrayConfig>& GraphicsConfig::getTextureArrays() const
-	{
-		return m_textureArrays;
-	}
-
 	void GraphicsConfig::setCameraUniformNames(const std::vector<const char*>& names)
 	{
 		m_cameraUniformNames = names;

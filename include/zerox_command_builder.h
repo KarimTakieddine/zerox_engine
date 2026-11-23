@@ -22,10 +22,10 @@ namespace ZeroX
 		template<CommandType C, typename Params>
 		void addCommand(const Params& params)
 		{
-			RenderCommand renderCommand{ .type = C };
-			renderCommand.paramData.resize(sizeof(Params));
-			std::memcpy(renderCommand.paramData.data(), &params, sizeof(Params));
-			m_buffer.commands.push_back(std::move(renderCommand));
+			EngineCommand engineCommand{ .type = C };
+			engineCommand.paramData.resize(sizeof(Params));
+			std::memcpy(engineCommand.paramData.data(), &params, sizeof(Params));
+			m_buffer.commands.push_back(std::move(engineCommand));
 		}
 
 	private:

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
+#include <string>
 
 #include <bump_allocator.hpp>
 #include <platform.h>
@@ -14,6 +16,8 @@
     #define ZEROX_CDECL
 #endif
 
+namespace ZeroXBridge { struct EngineFunctions; }
+
 namespace ZeroX
 {
     using ZeroXBridge::RenderDescriptor;
@@ -25,11 +29,13 @@ namespace ZeroX
     struct GameLibraryFunctions
     {
     public:
-        typedef ZeroXBridge::GameContext(ZEROX_CDECL* GameInitFunc)(GameAllocator*);
+        typedef void(ZEROX_CDECL* SetEngineFunctionsProc)(const ZeroXBridge::EngineFunctions*);
+        typedef ZeroXBridge::GameContext(ZEROX_CDECL* GameInitFunc)(GameAllocator*, const ZeroXBridge::EngineFunctions*);
         typedef bool(ZEROX_CDECL* GameLoadLevelFunc)(const ZeroXBridge::GameContext*, GameAllocator*, size_t);
         typedef bool(ZEROX_CDECL* GameUpdateFunc)(GameAllocator*, double);
         typedef RenderDescriptor(ZEROX_CDECL* RenderDescriptorFunc)(const GameAllocator*);
 
+        SetEngineFunctionsProc setEngineFunctions   { nullptr };
         GameInitFunc initGame                       { nullptr };
         GameLoadLevelFunc loadLevel                 { nullptr };
         GameUpdateFunc updateGame                   { nullptr };
@@ -49,7 +55,12 @@ namespace ZeroX
 
         const GameLibraryFunctions& getFunctions() const;
 
+        std::string getWorkingDirectory() const;
+        void setWorkingDirectory(const std::string& workingDirectory);
+
     private:
+        mutable std::mutex m_workingDirectoryMutex;
+        std::string m_workingDirectory;
         GameLibraryFunctions m_functions;
         platform::LibraryHandle m_handle{ nullptr };
     };
