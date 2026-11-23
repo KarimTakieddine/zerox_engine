@@ -290,11 +290,12 @@ namespace ZeroX
 
         std::vector<std::byte>& paramData = uploadTexturesCommand.paramData;
 
-        size_t paramsSize{ count * sizeof(ZeroXBridge::Texture) };
+        size_t paramsSize{ count * sizeof(ZeroXBridge::Texture) + sizeof(size_t) };
 
         paramData.resize(paramsSize);
 
         std::memcpy(paramData.data(), textures, count * sizeof(ZeroXBridge::Texture));
+        std::memcpy(paramData.data() + sizeof(ZeroXBridge::Texture), &count, sizeof(size_t));
 
         for (size_t i = 0; i < count; ++i)
         {
