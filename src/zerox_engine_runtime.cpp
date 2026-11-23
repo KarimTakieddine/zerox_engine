@@ -121,7 +121,7 @@ namespace ZeroX
             .handle                 = this,
             .getFileSize            = &platform::getFileSize,
             .readFile               = &platform::readFile,
-            .uploadTextures         = [](EngineHandle handle, const char* const* paths, const ZeroXBridge::Texture* textures, size_t count) -> void {  },
+            .uploadTextures         = [](EngineHandle handle, const char* const* paths, const ZeroXBridge::Texture* textures, size_t count) -> void { reinterpret_cast<EngineRuntime*>(handle)->uploadTextures(paths, textures, count); },
             .uploadTextureArray     = [](EngineHandle handle, const char* const* files, const ZeroXBridge::Texture* texture, size_t count) -> void { },
             .allocateAudio          = [](EngineHandle handle, const char* path, const ZeroXBridge::AudioSound* sound) -> void { reinterpret_cast<EngineRuntime*>(handle)->allocateAudioFile({ .path = path, .sound = *sound }); },
             .playAudio              = [](EngineHandle handle, size_t index) -> void { }
@@ -268,7 +268,7 @@ namespace ZeroX
 
         const std::string& path = file.path;
 
-        paramData.resize(sizeof(ZeroXBridge::AudioSound) +path.size() + 1);
+        paramData.resize(sizeof(ZeroXBridge::AudioSound) + path.size() + 1);
 
         std::memcpy(paramData.data(), &file.sound, sizeof(ZeroXBridge::AudioSound));
         std::memcpy(paramData.data() + sizeof(ZeroXBridge::AudioSound), path.data(), paramData.size() - 1);
@@ -276,6 +276,40 @@ namespace ZeroX
         while (!m_audioCommandPool->push({ { allocateAudioCommand } }));
 
         m_audioCommandSemaphore.release();
+    }
+
+    void EngineRuntime::uploadTextures(const char* const* paths, const ZeroXBridge::Texture* textures, size_t count)
+    {
+        assert(paths && textures);
+        if (!paths || !textures)
+        {
+            return;
+        }
+
+        EngineCommand uploadTexturesCommand{ .type = CommandType::UPLOAD_TEXTURES };
+
+        std::vector<std::byte>& paramData = uploadTexturesCommand.paramData;
+
+        size_t paramsSize{ count * sizeof(ZeroXBridge::Texture) };
+
+        paramData.resize(paramsSize);
+
+        std::memcpy(paramData.data(), textures, count * sizeof(ZeroXBridge::Texture));
+
+        for (size_t i = 0; i < count; ++i)
+        {
+            std::string path(paths[i]);
+
+            const size_t length = path.size();
+            const size_t offset = paramsSize;
+
+            paramsSize += ( length + 1 );
+            paramData.resize(paramsSize);
+
+            std::memcpy(paramData.data() + offset, path.data(), length);
+        }
+
+        while (!m_renderCommandPool->push({ { uploadTexturesCommand } }));
     }
 
     void EngineRuntime::render(const GraphicsConfig& config, IWindow* window, CommandPool* commandPool)
