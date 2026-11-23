@@ -31,33 +31,6 @@ namespace ZeroX
 		return m_meshes;
 	}
 
-	void GraphicsConfig::setTextureCount(size_t count)
-	{
-		m_textures.reserve(count);
-	}
-
-	void GraphicsConfig::addTexture(const renderer::TextureConfig& texture)
-	{
-		m_textures.emplace_back(texture);
-	}
-
-	const renderer::TextureConfig& GraphicsConfig::getTexture(size_t index) const
-	{
-		if (index >= m_textures.size())
-		{
-			throw std::runtime_error(
-				std::string("Failed to get Texture. Out of bounds: ")
-				+ std::to_string(index));
-		}
-
-		return m_textures.at(index);
-	}
-
-	const std::vector<renderer::TextureConfig>& GraphicsConfig::getTextures() const
-	{
-		return m_textures;
-	}
-
 	void GraphicsConfig::setTextureArrayCount(size_t count)
 	{
 		m_textureArrays.reserve(count);

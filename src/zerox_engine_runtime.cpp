@@ -290,12 +290,12 @@ namespace ZeroX
 
         std::vector<std::byte>& paramData = uploadTexturesCommand.paramData;
 
-        size_t paramsSize{ count * sizeof(ZeroXBridge::Texture) + sizeof(size_t) };
+        size_t paramsSize{ sizeof(uint64_t) * 2 + count * sizeof(ZeroXBridge::Texture) };
 
         paramData.resize(paramsSize);
 
-        std::memcpy(paramData.data(), textures, count * sizeof(ZeroXBridge::Texture));
-        std::memcpy(paramData.data() + sizeof(ZeroXBridge::Texture), &count, sizeof(size_t));
+        std::memcpy(paramData.data(), &count, sizeof(uint64_t));
+        std::memcpy(paramData.data() + 2 * sizeof(uint64_t), textures, count * sizeof(ZeroXBridge::Texture));
 
         for (size_t i = 0; i < count; ++i)
         {
@@ -449,7 +449,6 @@ namespace ZeroX
 
         renderer::GraphicsConfig graphicsConfig = {
             .meshes                     = meshes.data(),
-            .textures                   = config.getTextures().data(),
             .shaders                    = shaders.data(),
             .cameraEye                  = &config.getCameraEye(),
             .cameraFrustum              = &config.getCameraFrustum(),
@@ -460,7 +459,6 @@ namespace ZeroX
             .meshCount                  = meshes.size(),
             .bufferCount                = 5,
             .vertexArrayCount           = config.getVertexArrayCount(),
-            .textureCount               = config.getTextures().size(),
             .textureArrayCount          = config.getTextureArrays().size(),
             .shaderCount                = shaders.size(),
             .shaderProgramCount         = shaderCompileSteps.size(),
@@ -543,6 +541,38 @@ namespace ZeroX
                     case CommandType::SET_CLIENT_AREA:
                         renderer::handleSetClientAreaCommand(&renderAllocator, mutableGraphicsMemory, *paramsView.read_object<renderer::SetClientAreaCommand>(0).data());
                         break;
+                    case CommandType::UPLOAD_TEXTURES:
+                    {
+                        MemoryCursor<16> commandCursor;
+
+                        auto textures = paramsView.read_contiguous_array<ZeroXBridge::Texture>(0);
+                        const size_t textureCount = textures.size();
+
+                        commandCursor.step_array<ZeroXBridge::Texture>(textureCount);
+
+                        uint64_t texturePathOffset = commandCursor.getOffset();
+
+                        std::vector<const char*> texturePaths;
+                        texturePaths.reserve(textureCount);
+                        for (size_t i = 0; i < textureCount; ++i)
+                        {
+                            const char* texturePathBytes = reinterpret_cast<const char*>(command.paramData.data()) + texturePathOffset;
+
+                            std::string texturePath(texturePathBytes);
+
+                            texturePaths.push_back(texturePathBytes);
+                            
+                            texturePathOffset += texturePath.size();
+                        }
+
+                        renderer::uploadTextures(
+                            renderer::freezeGraphicsMemory(mutableGraphicsMemory),
+                            textureCount,
+                            texturePaths.data(),
+                            textures.data());
+
+                        break;
+                    }
                     default:
                         break;
                     }

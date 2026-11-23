@@ -22,11 +22,6 @@ namespace ZeroX
 		const MeshConfig& getMesh(size_t index) const;
 		const std::vector<MeshConfig>& getMeshes() const;
 
-		void setTextureCount(size_t count);
-		void addTexture(const renderer::TextureConfig& texture);
-		const renderer::TextureConfig& getTexture(size_t index) const;
-		const std::vector<renderer::TextureConfig>& getTextures() const;
-
 		void setTextureArrayCount(size_t count);
 		void addTextureArray(const renderer::TextureArrayConfig& config);
 		const renderer::TextureArrayConfig& getTextureArray(size_t index) const;
@@ -49,7 +44,6 @@ namespace ZeroX
 
 	private:
 		std::vector<MeshConfig> m_meshes;
-		std::vector<renderer::TextureConfig> m_textures;
 		std::vector<renderer::TextureArrayConfig> m_textureArrays;
 		std::vector<const char*> m_cameraUniformNames;
 		std::string m_cameraUniformBuffer;

@@ -125,18 +125,6 @@ namespace ZeroX
 
 				config.setCameraUniformBuffer("CameraMatrices");
 
-				config.setTextureCount(1);
-				renderer::TextureConfig megaTextureConfig = {
-					.texture = {
-						.wrapModeS = ZeroXBridge::TextureWrapMode::CLAMP_TO_EDGE,
-						.wrapModeT = ZeroXBridge::TextureWrapMode::CLAMP_TO_EDGE,
-						.minFilter = ZeroXBridge::TextureFilter::NEAREST,
-						.magFilter = ZeroXBridge::TextureFilter::NEAREST
-					},
-					.path = "./textures/the_mega_texture.png"
-				};
-				config.addTexture(megaTextureConfig);
-
 				config.setTextureArrayCount(1);
 				renderer::TextureArrayConfig backgroundArrayConfig = {
 					.data = {
