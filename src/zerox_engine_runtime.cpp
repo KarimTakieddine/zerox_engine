@@ -275,12 +275,17 @@ namespace ZeroX
 
         std::vector<std::byte>& paramData = allocateAudioCommand.paramData;
 
-        const std::string& path = file.path;
+        const std::string& relativePath = file.path;
+
+        std::filesystem::path absolutePath(m_context->getGameLibrary()->getWorkingDirectory());
+        absolutePath /= relativePath;
+
+        const std::string path = absolutePath.string();
 
         paramData.resize(sizeof(ZeroXBridge::AudioSound) + path.size() + 1);
 
         std::memcpy(paramData.data(), &file.sound, sizeof(ZeroXBridge::AudioSound));
-        std::memcpy(paramData.data() + sizeof(ZeroXBridge::AudioSound), path.data(), paramData.size() - 1);
+        std::memcpy(paramData.data() + sizeof(ZeroXBridge::AudioSound), path.data(), path.size());
 
         while (!m_audioCommandPool->push({ { allocateAudioCommand } }));
 
