@@ -28,6 +28,8 @@ namespace ZeroX
 
 		void load(const char* configPath, AsyncLoadPromise promise);
 
+		GameLibrary* getGameLibrary() const;
+
 	private:
 		void waitForLoadFinish();
 		void loadAudioPlayer(const AudioConfig& audioConfig, std::promise<IAudioPlayer*> promise);

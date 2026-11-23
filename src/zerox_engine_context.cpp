@@ -99,6 +99,11 @@ namespace ZeroX
 		}
 	}
 
+	GameLibrary* EngineContext::getGameLibrary() const
+	{
+		return m_gameLibrary.get();
+	}
+
 	void EngineContext::loadAudioPlayer(const AudioConfig& audioConfig, std::promise<IAudioPlayer*> promise)
 	{
 		m_audioPlayer = std::make_unique<MiniAudioPlayer>();

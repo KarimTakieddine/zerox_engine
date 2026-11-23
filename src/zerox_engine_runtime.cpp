@@ -308,7 +308,12 @@ namespace ZeroX
 
         for (size_t i = 0; i < count; ++i)
         {
-            std::string path(paths[i]);
+            const std::string relativeTexturePath(paths[i]);
+
+            std::filesystem::path absoluteTexturePath(m_context->getGameLibrary()->getWorkingDirectory());
+            absoluteTexturePath /= relativeTexturePath;
+
+            const std::string path = absoluteTexturePath.string();
 
             const size_t length = path.size();
             const size_t offset = paramsSize;
@@ -344,7 +349,12 @@ namespace ZeroX
 
         for (size_t i = 0; i < count; ++i)
         {
-            std::string path(paths[i]);
+            const std::string relativeTexturePath(paths[i]);
+            
+            std::filesystem::path absoluteTexturePath(m_context->getGameLibrary()->getWorkingDirectory());
+            absoluteTexturePath /= relativeTexturePath;
+
+            const std::string path = absoluteTexturePath.string();
 
             const size_t length = path.size();
             const size_t offset = paramsSize;
