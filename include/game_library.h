@@ -1,6 +1,8 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
+#include <string>
 
 #include <bump_allocator.hpp>
 #include <platform.h>
@@ -53,7 +55,12 @@ namespace ZeroX
 
         const GameLibraryFunctions& getFunctions() const;
 
+        std::string getWorkingDirectory() const;
+        void setWorkingDirectory(const std::string& workingDirectory);
+
     private:
+        mutable std::mutex m_workingDirectoryMutex;
+        std::string m_workingDirectory;
         GameLibraryFunctions m_functions;
         platform::LibraryHandle m_handle{ nullptr };
     };

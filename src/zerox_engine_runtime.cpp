@@ -3,6 +3,7 @@
 
 #include <glad/gl.h>
 
+#include <opengl_allocator.h>
 #include <render_buffer.h>
 #include <renderer.hpp>
 
@@ -65,6 +66,14 @@ namespace
             return false;
         }
 
+        if (!gameLibrary->load(destinationPath.string().c_str()))
+        {
+            LOG_ERROR << "Failed to reload game library: Failed to load library functions from " << destinationPath.string().c_str();
+            return false;
+        }
+
+        gameLibrary->setWorkingDirectory(parentDirectory);
+
         return gameLibrary->load(destinationPath.string().c_str());
     }
 }
@@ -122,7 +131,7 @@ namespace ZeroX
             .getFileSize            = &platform::getFileSize,
             .readFile               = &platform::readFile,
             .uploadTextures         = [](EngineHandle handle, const char* const* paths, const ZeroXBridge::Texture* textures, size_t count) -> void { reinterpret_cast<EngineRuntime*>(handle)->uploadTextures(paths, textures, count); },
-            .uploadTextureArray     = [](EngineHandle handle, const char* const* files, const ZeroXBridge::Texture* texture, size_t count) -> void { },
+            .uploadTextureArray     = [](EngineHandle handle, const char* const* files, size_t count, const ZeroXBridge::Texture* texture, size_t index) -> void { reinterpret_cast<EngineRuntime*>(handle)->uploadTextureArray(files, count, texture, index); },
             .allocateAudio          = [](EngineHandle handle, const char* path, const ZeroXBridge::AudioSound* sound) -> void { reinterpret_cast<EngineRuntime*>(handle)->allocateAudioFile({ .path = path, .sound = *sound }); },
             .playAudio              = [](EngineHandle handle, size_t index) -> void { }
         };
@@ -313,6 +322,42 @@ namespace ZeroX
         while (!m_renderCommandPool->push({ { uploadTexturesCommand } }));
     }
 
+    void EngineRuntime::uploadTextureArray(const char* const* paths, size_t count, const ZeroXBridge::Texture* texture, size_t index)
+    {
+        assert(paths && texture);
+        if (!paths || !texture)
+        {
+            return;
+        }
+
+        EngineCommand uploadTextureArrayCommand{ .type = CommandType::UPLOAD_TEXTURE_ARRAY };
+
+        std::vector<std::byte>& paramData = uploadTextureArrayCommand.paramData;
+
+        size_t paramsSize{ 2 * sizeof(size_t) + sizeof(ZeroXBridge::Texture) };
+
+        paramData.resize(paramsSize);
+
+        std::memcpy(paramData.data(), &index, sizeof(size_t));
+        std::memcpy(paramData.data() + sizeof(size_t), &count, sizeof(size_t));
+        std::memcpy(paramData.data() + 2 * sizeof(size_t), texture, sizeof(ZeroXBridge::Texture));
+
+        for (size_t i = 0; i < count; ++i)
+        {
+            std::string path(paths[i]);
+
+            const size_t length = path.size();
+            const size_t offset = paramsSize;
+
+            paramsSize += ( length + 1 );
+            paramData.resize(paramsSize);
+
+            std::memcpy(paramData.data() + offset, path.data(), length);
+        }
+
+        while (!m_renderCommandPool->push({ { uploadTextureArrayCommand } }));
+    }
+
     void EngineRuntime::render(const GraphicsConfig& config, IWindow* window, CommandPool* commandPool)
     {
         window->bindGraphicsContext();
@@ -455,11 +500,9 @@ namespace ZeroX
             .cameraUniformBuffer        = config.getCameraUniformBuffer().data(),
             .cameraUniformNames         = config.getCameraUniformNames().data(),
             .shaderCompileSteps         = shaderCompileSteps.data(),
-            .textureArrays              = config.getTextureArrays().data(),
             .meshCount                  = meshes.size(),
             .bufferCount                = 5,
             .vertexArrayCount           = config.getVertexArrayCount(),
-            .textureArrayCount          = config.getTextureArrays().size(),
             .shaderCount                = shaders.size(),
             .shaderProgramCount         = shaderCompileSteps.size(),
             .compileStepCount           = shaderCompileSteps.size()
@@ -562,7 +605,7 @@ namespace ZeroX
 
                             texturePaths.push_back(texturePathBytes);
                             
-                            texturePathOffset += texturePath.size();
+                            texturePathOffset += texturePath.size() + 1;
                         }
 
                         renderer::uploadTextures(
@@ -570,6 +613,32 @@ namespace ZeroX
                             textureCount,
                             texturePaths.data(),
                             textures.data());
+
+                        break;
+                    }
+                    case CommandType::UPLOAD_TEXTURE_ARRAY:
+                    {
+                        const auto index    = *paramsView.read_object<size_t>(0).data();
+                        const auto count    = *paramsView.read_object<size_t>(sizeof(size_t)).data();
+                        const auto* texture = paramsView.read_object<ZeroXBridge::Texture>(2 * sizeof(size_t)).data();
+
+                        uint64_t texturePathOffset = 2 * sizeof(size_t) + sizeof(ZeroXBridge::Texture);
+
+                        std::vector<const char*> texturePaths;
+                        texturePaths.reserve(count);
+                        for (size_t i = 0; i < count; ++i)
+                        {
+                            const char* texturePathBytes = reinterpret_cast<const char*>(command.paramData.data()) + texturePathOffset;
+
+                            std::string texturePath(texturePathBytes);
+
+                            texturePaths.push_back(texturePathBytes);
+
+                            texturePathOffset += texturePath.size() + 1;
+                        }
+
+                        const auto memory = renderer::freezeGraphicsMemory(mutableGraphicsMemory);
+                        renderer::uploadTextureArray(memory, *texture, index, count, texturePaths.data());
 
                         break;
                     }

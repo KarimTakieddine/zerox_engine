@@ -151,6 +151,8 @@ namespace ZeroX
 				}
 				else
 				{
+					m_gameLibrary->setWorkingDirectory(gameDirectoryPath.string());
+
 					libraryPromise.set_value(m_gameLibrary.get());
 				}
 			}

@@ -31,33 +31,6 @@ namespace ZeroX
 		return m_meshes;
 	}
 
-	void GraphicsConfig::setTextureArrayCount(size_t count)
-	{
-		m_textureArrays.reserve(count);
-	}
-
-	void GraphicsConfig::addTextureArray(const renderer::TextureArrayConfig& config)
-	{
-		m_textureArrays.emplace_back(config);
-	}
-
-	const renderer::TextureArrayConfig& GraphicsConfig::getTextureArray(size_t index) const
-	{
-		if (index >= m_textureArrays.size())
-		{
-			throw std::runtime_error(
-				std::string("Failed to get TextureArray. Out of bounds: ")
-				+ std::to_string(index));
-		}
-
-		return m_textureArrays.at(index);
-	}
-
-	const std::vector<renderer::TextureArrayConfig>& GraphicsConfig::getTextureArrays() const
-	{
-		return m_textureArrays;
-	}
-
 	void GraphicsConfig::setCameraUniformNames(const std::vector<const char*>& names)
 	{
 		m_cameraUniformNames = names;

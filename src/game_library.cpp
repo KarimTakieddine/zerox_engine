@@ -53,4 +53,18 @@ namespace ZeroX
     {
         return m_functions;
     }
+
+    std::string GameLibrary::getWorkingDirectory() const
+    {
+        std::lock_guard<std::mutex> lock(m_workingDirectoryMutex);
+
+        return m_workingDirectory;
+    }
+
+    void GameLibrary::setWorkingDirectory(const std::string& workingDirectory)
+    {
+        std::lock_guard<std::mutex> lock(m_workingDirectoryMutex);
+
+        m_workingDirectory = workingDirectory;
+    }
 }

@@ -125,21 +125,6 @@ namespace ZeroX
 
 				config.setCameraUniformBuffer("CameraMatrices");
 
-				config.setTextureArrayCount(1);
-				renderer::TextureArrayConfig backgroundArrayConfig = {
-					.data = {
-						.width		= 1920,
-						.height		= 1080,
-						.wrapModeS	= ZeroXBridge::TextureWrapMode::REPEAT,
-						.wrapModeT	= ZeroXBridge::TextureWrapMode::REPEAT,
-						.minFilter	= ZeroXBridge::TextureFilter::LINEAR,
-						.magFilter	= ZeroXBridge::TextureFilter::LINEAR
-					},
-					.paths			= ::TEXTURE_ARRAY_PATHS,
-					.textureCount	= 2
-				};
-				config.addTextureArray(backgroundArrayConfig);
-
 				MemoryMap memoryMap;
 
 				memoryMap.mapMesh(0, MeshType::QUAD);

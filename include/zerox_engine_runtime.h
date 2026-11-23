@@ -26,6 +26,7 @@ namespace ZeroX
 
         void allocateAudioFile(const AudioFile& file);
         void uploadTextures(const char* const* paths, const ZeroXBridge::Texture* textures, size_t count);
+        void uploadTextureArray(const char* const* paths, size_t count, const ZeroXBridge::Texture* texture, size_t index);
 
         std::unique_ptr<EngineContext> m_context            { nullptr };
         std::unique_ptr<CommandPool> m_renderCommandPool    { nullptr };
