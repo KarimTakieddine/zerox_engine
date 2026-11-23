@@ -395,6 +395,7 @@ namespace ZeroX
 
         const std::vector<MeshConfig>& meshConfigs = config.getMeshes();
 
+        // TODO(Karim): This shouldn't be necessary:
         std::vector<renderer::Mesh> meshes;
         meshes.reserve(meshConfigs.size());
         for (const auto& meshConfig : meshConfigs)
@@ -411,34 +412,21 @@ namespace ZeroX
             );
         }
 
-        const std::vector<renderer::Texture>& textures = config.getTextures();
-
-        std::vector<renderer::TextureArray> textureArrays;
-        textureArrays.reserve(config.getTextureArrays().size());
-        for (const auto& textureArray : config.getTextureArrays())
-        {
-            textureArrays.emplace_back(renderer::TextureArray{
-                .data           = textureArray.data,
-                .paths          = textureArray.textureFiles.data(),
-                .textureCount   = textureArray.textureFiles.size()
-            });
-        }
-
         renderer::GraphicsConfig graphicsConfig = {
             .meshes                     = meshes.data(),
-            .textures                   = textures.data(),
+            .textures                   = config.getTextures().data(),
             .shaders                    = shaders.data(),
             .cameraEye                  = &config.getCameraEye(),
             .cameraFrustum              = &config.getCameraFrustum(),
             .cameraUniformBuffer        = config.getCameraUniformBuffer().data(),
             .cameraUniformNames         = config.getCameraUniformNames().data(),
             .shaderCompileSteps         = shaderCompileSteps.data(),
-            .textureArrays              = textureArrays.data(),
+            .textureArrays              = config.getTextureArrays().data(),
             .meshCount                  = meshes.size(),
             .bufferCount                = 5,
             .vertexArrayCount           = config.getVertexArrayCount(),
-            .textureCount               = textures.size(),
-            .textureArrayCount          = textureArrays.size(),
+            .textureCount               = config.getTextures().size(),
+            .textureArrayCount          = config.getTextureArrays().size(),
             .shaderCount                = shaders.size(),
             .shaderProgramCount         = shaderCompileSteps.size(),
             .compileStepCount           = shaderCompileSteps.size()

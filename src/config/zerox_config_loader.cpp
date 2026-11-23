@@ -5,6 +5,14 @@
 #include "config/zerox_config_loader.h"
 #include "config/zerox_config_parser.h"
 
+namespace
+{
+	constexpr const char* TEXTURE_ARRAY_PATHS[2] = {
+		"./textures/test_background_0.png",
+		"./textures/test_background_1.png"
+	};
+}
+
 namespace ZeroX
 {
 	std::future<WindowConfig> loadWindowConfig(const pugi::xml_node& node)
@@ -118,8 +126,8 @@ namespace ZeroX
 				config.setCameraUniformBuffer("CameraMatrices");
 
 				config.setTextureCount(1);
-				renderer::Texture megaTexture = {
-					.data = {
+				renderer::TextureConfig megaTextureConfig = {
+					.texture = {
 						.wrapModeS = ZeroXBridge::TextureWrapMode::CLAMP_TO_EDGE,
 						.wrapModeT = ZeroXBridge::TextureWrapMode::CLAMP_TO_EDGE,
 						.minFilter = ZeroXBridge::TextureFilter::NEAREST,
@@ -127,14 +135,10 @@ namespace ZeroX
 					},
 					.path = "./textures/the_mega_texture.png"
 				};
-				config.addTexture(megaTexture);
+				config.addTexture(megaTextureConfig);
 
 				config.setTextureArrayCount(1);
-				TextureArrayConfig backgroundArrayConfig = {
-					.textureFiles = {
-						"./textures/test_background_0.png",
-						"./textures/test_background_1.png"
-					},
+				renderer::TextureArrayConfig backgroundArrayConfig = {
 					.data = {
 						.width		= 1920,
 						.height		= 1080,
@@ -142,7 +146,9 @@ namespace ZeroX
 						.wrapModeT	= ZeroXBridge::TextureWrapMode::REPEAT,
 						.minFilter	= ZeroXBridge::TextureFilter::LINEAR,
 						.magFilter	= ZeroXBridge::TextureFilter::LINEAR
-					}
+					},
+					.paths			= ::TEXTURE_ARRAY_PATHS,
+					.textureCount	= 2
 				};
 				config.addTextureArray(backgroundArrayConfig);
 

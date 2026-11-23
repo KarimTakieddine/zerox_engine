@@ -36,12 +36,12 @@ namespace ZeroX
 		m_textures.reserve(count);
 	}
 
-	void GraphicsConfig::addTexture(const renderer::Texture& texture)
+	void GraphicsConfig::addTexture(const renderer::TextureConfig& texture)
 	{
 		m_textures.emplace_back(texture);
 	}
 
-	const renderer::Texture& GraphicsConfig::getTexture(size_t index) const
+	const renderer::TextureConfig& GraphicsConfig::getTexture(size_t index) const
 	{
 		if (index >= m_textures.size())
 		{
@@ -53,7 +53,7 @@ namespace ZeroX
 		return m_textures.at(index);
 	}
 
-	const std::vector<renderer::Texture>& GraphicsConfig::getTextures() const
+	const std::vector<renderer::TextureConfig>& GraphicsConfig::getTextures() const
 	{
 		return m_textures;
 	}
@@ -63,12 +63,12 @@ namespace ZeroX
 		m_textureArrays.reserve(count);
 	}
 
-	void GraphicsConfig::addTextureArray(const TextureArrayConfig& config)
+	void GraphicsConfig::addTextureArray(const renderer::TextureArrayConfig& config)
 	{
 		m_textureArrays.emplace_back(config);
 	}
 
-	const TextureArrayConfig& GraphicsConfig::getTextureArray(size_t index) const
+	const renderer::TextureArrayConfig& GraphicsConfig::getTextureArray(size_t index) const
 	{
 		if (index >= m_textureArrays.size())
 		{
@@ -80,7 +80,7 @@ namespace ZeroX
 		return m_textureArrays.at(index);
 	}
 
-	const std::vector<TextureArrayConfig>& GraphicsConfig::getTextureArrays() const
+	const std::vector<renderer::TextureArrayConfig>& GraphicsConfig::getTextureArrays() const
 	{
 		return m_textureArrays;
 	}

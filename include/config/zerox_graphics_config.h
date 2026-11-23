@@ -14,12 +14,6 @@ namespace ZeroX
 		std::vector<unsigned int> triangles;
 	};
 
-	struct TextureArrayConfig
-	{
-		std::vector<const char*> textureFiles	{ };
-		ZeroXBridge::Texture data				{ };
-	};
-
 	class GraphicsConfig
 	{
 	public:
@@ -29,14 +23,14 @@ namespace ZeroX
 		const std::vector<MeshConfig>& getMeshes() const;
 
 		void setTextureCount(size_t count);
-		void addTexture(const renderer::Texture& texture);
-		const renderer::Texture& getTexture(size_t index) const;
-		const std::vector<renderer::Texture>& getTextures() const;
+		void addTexture(const renderer::TextureConfig& texture);
+		const renderer::TextureConfig& getTexture(size_t index) const;
+		const std::vector<renderer::TextureConfig>& getTextures() const;
 
 		void setTextureArrayCount(size_t count);
-		void addTextureArray(const TextureArrayConfig& config);
-		const TextureArrayConfig& getTextureArray(size_t index) const;
-		const std::vector<TextureArrayConfig>& getTextureArrays() const;
+		void addTextureArray(const renderer::TextureArrayConfig& config);
+		const renderer::TextureArrayConfig& getTextureArray(size_t index) const;
+		const std::vector<renderer::TextureArrayConfig>& getTextureArrays() const;
 
 		void setCameraUniformNames(const std::vector<const char*>& names);
 		const std::vector<const char*>& getCameraUniformNames() const;
@@ -55,8 +49,8 @@ namespace ZeroX
 
 	private:
 		std::vector<MeshConfig> m_meshes;
-		std::vector<renderer::Texture> m_textures;
-		std::vector<TextureArrayConfig> m_textureArrays;
+		std::vector<renderer::TextureConfig> m_textures;
+		std::vector<renderer::TextureArrayConfig> m_textureArrays;
 		std::vector<const char*> m_cameraUniformNames;
 		std::string m_cameraUniformBuffer;
 		renderer::Eye m_cameraEye;

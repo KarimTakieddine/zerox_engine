@@ -16,7 +16,9 @@ namespace ZeroX
 		ALLOCATE_AUDIO			= 6,
 		PLAY_AUDIO				= 7,
 		SHUTDOWN_AUDIO			= 8,
-		LAST					= SHUTDOWN_AUDIO
+		UPLOAD_TEXTURES			= 9,
+		UPLOAD_TEXTURE_ARRAY	= 10,
+		LAST					= UPLOAD_TEXTURE_ARRAY
 	};
 
 	struct EngineCommand
