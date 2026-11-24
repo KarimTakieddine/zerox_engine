@@ -10,6 +10,8 @@ namespace ZeroX
 {
     struct CommandPool;
 
+    inline constexpr size_t MAX_AUDIO_COMMANDS = 1 << 4;
+
     class EngineRuntime
     {
     public:
@@ -35,11 +37,11 @@ namespace ZeroX
 
         std::thread m_rendererThread;
         std::thread m_audioThread;
-        std::counting_semaphore<> m_audioCommandSemaphore   { 0 };
-        std::atomic<uint64_t> m_renderFrameIndex            { 0 };
-        std::atomic<double> m_frameDeltaTime                { 0.0 };
-        std::atomic<bool> m_runRenderer                     { true };
-        std::atomic<bool> m_runAudio                        { true };
+        std::counting_semaphore<MAX_AUDIO_COMMANDS> m_audioCommandSemaphore { 0 };
+        std::atomic<uint64_t> m_renderFrameIndex                            { 0 };
+        std::atomic<double> m_frameDeltaTime                                { 0.0 };
+        std::atomic<bool> m_runRenderer                                     { true };
+        std::atomic<bool> m_runAudio                                        { true };
 
 #ifdef _WIN32
         std::atomic<UINT> m_resizeWidth     { 0 };

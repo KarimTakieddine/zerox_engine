@@ -124,7 +124,7 @@ namespace ZeroX
         IAudioPlayer* audioPlayer = audioPlayerFuture.get();
         LOG_INFO << "Successfully intialized audio player. Starting audio thread...";
 
-        m_audioCommandPool->allocate(16);
+        m_audioCommandPool->allocate(MAX_AUDIO_COMMANDS);
         m_audioThread = std::thread(
             &EngineRuntime::processAudio,
             this, audioPlayer, m_audioCommandPool.get());
